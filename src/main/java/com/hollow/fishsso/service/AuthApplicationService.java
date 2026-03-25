@@ -40,20 +40,13 @@ public class AuthApplicationService {
      * @param redirectUri 重定向URI
      * @param scope 授权范围
      * @param state 状态参数
+     * @param sessionId 会话ID
      * @return 重定向URI
      */
-    public URI buildAuthorizeRedirect(String clientId, String redirectUri, String scope, String state) {
-        ssoService.validateAuthorizationRequest(clientId, redirectUri, scope);
-        UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/consent")
-                .queryParam("client_id", clientId)
-                .queryParam("redirect_uri", redirectUri);
-        if (StringUtils.hasText(scope)) {
-            builder.queryParam("scope", scope);
-        }
-        if (StringUtils.hasText(state)) {
-            builder.queryParam("state", state);
-        }
-        return builder.build().encode().toUri();
+    public URI buildAuthorizeRedirect(String clientId, String redirectUri, String scope, String state, String sessionId) {
+        return ssoService.tryAutoApproveAuthorization(clientId, redirectUri, scope, sessionId)
+                .map(authCode -> buildCodeRedirect(redirectUri, authCode.getCode(), state))
+                .orElseGet(() -> buildConsentRedirect(clientId, redirectUri, scope, state));
     }
 
     /**
@@ -100,6 +93,43 @@ public class AuthApplicationService {
         String accessToken = resolveBearerToken(authorization);
         UserAccount user = ssoService.userInfo(accessToken);
         return new UserInfoView(user.getId(), user.getUsername(), user.getDisplayName(), user.getEmail());
+    }
+
+    /**
+     * 构建同意页重定向URI
+     * @param clientId 客户端ID
+     * @param redirectUri 重定向URI
+     * @param scope 授权范围
+     * @param state 状态参数
+     * @return 重定向URI
+     */
+    private URI buildConsentRedirect(String clientId, String redirectUri, String scope, String state) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/consent")
+                .queryParam("client_id", clientId)
+                .queryParam("redirect_uri", redirectUri);
+        if (StringUtils.hasText(scope)) {
+            builder.queryParam("scope", scope);
+        }
+        if (StringUtils.hasText(state)) {
+            builder.queryParam("state", state);
+        }
+        return builder.build().encode().toUri();
+    }
+
+    /**
+     * 构建授权码重定向URI
+     * @param redirectUri 重定向URI
+     * @param code 授权码
+     * @param state 状态参数
+     * @return 重定向URI
+     */
+    private URI buildCodeRedirect(String redirectUri, String code, String state) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(redirectUri)
+                .queryParam("code", code);
+        if (StringUtils.hasText(state)) {
+            builder.queryParam("state", state);
+        }
+        return builder.build().encode().toUri();
     }
 
     /**

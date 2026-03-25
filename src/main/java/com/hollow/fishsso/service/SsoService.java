@@ -5,18 +5,24 @@ import com.hollow.fishsso.exception.SsoException;
 import com.hollow.fishsso.model.AccessToken;
 import com.hollow.fishsso.model.AuthCode;
 import com.hollow.fishsso.model.ClientRegistration;
+import com.hollow.fishsso.model.ConsentGrant;
 import com.hollow.fishsso.model.SessionInfo;
 import com.hollow.fishsso.model.UserAccount;
 import com.hollow.fishsso.repository.AuthCodeStore;
 import com.hollow.fishsso.repository.ClientRepository;
+import com.hollow.fishsso.repository.ConsentStore;
 import com.hollow.fishsso.repository.SessionStore;
 import com.hollow.fishsso.repository.TokenStore;
 import com.hollow.fishsso.repository.UserRepository;
 import com.hollow.fishsso.service.dto.AuthorizationContext;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,6 +40,7 @@ public class SsoService {
     private final SessionStore sessionStore;
     private final AuthCodeStore authCodeStore;
     private final TokenStore tokenStore;
+    private final ConsentStore consentStore;
     private final PasswordEncoder passwordEncoder;
     private final SsoProperties properties;
     private final LoginProtectionService loginProtectionService;
@@ -45,6 +52,7 @@ public class SsoService {
      * @param sessionStore 会话存储
      * @param authCodeStore 授权码存储
      * @param tokenStore 令牌存储
+     * @param consentStore 授权同意记录存储
      * @param passwordEncoder 密码编码器
      * @param properties SSO配置属性
      * @param loginProtectionService 登录防护服务
@@ -54,6 +62,7 @@ public class SsoService {
                       SessionStore sessionStore,
                       AuthCodeStore authCodeStore,
                       TokenStore tokenStore,
+                      ConsentStore consentStore,
                       PasswordEncoder passwordEncoder,
                       SsoProperties properties,
                       LoginProtectionService loginProtectionService) {
@@ -62,6 +71,7 @@ public class SsoService {
         this.sessionStore = sessionStore;
         this.authCodeStore = authCodeStore;
         this.tokenStore = tokenStore;
+        this.consentStore = consentStore;
         this.passwordEncoder = passwordEncoder;
         this.properties = properties;
         this.loginProtectionService = loginProtectionService;
@@ -138,7 +148,49 @@ public class SsoService {
         validateRedirectUri(client, redirectUri);
         SessionInfo session = requireSession(sessionId);
         List<String> scopes = resolveScopes(scope, client);
+        recordConsent(session.getUserId(), client.getClientId(), scopes);
         return authCodeStore.create(client.getClientId(), session.getUserId(), redirectUri, scopes, properties.getAuthCodeTtl());
+    }
+
+    /**
+     * 尝试基于已同意记录自动批准授权
+     * @param clientId 客户端ID
+     * @param redirectUri 重定向URI
+     * @param scope 授权范围
+     * @param sessionId 会话ID
+     * @return 授权码（可选）
+     */
+    public Optional<AuthCode> tryAutoApproveAuthorization(String clientId,
+                                                          String redirectUri,
+                                                          String scope,
+                                                          String sessionId) {
+        ClientRegistration client = requireClient(clientId);
+        validateRedirectUri(client, redirectUri);
+        List<String> requestedScopes = resolveScopes(scope, client);
+
+        Optional<SessionInfo> sessionOptional = findValidSession(sessionId);
+        if (sessionOptional.isEmpty()) {
+            return Optional.empty();
+        }
+        SessionInfo session = sessionOptional.get();
+
+        Optional<ConsentGrant> consentOptional = consentStore.find(session.getUserId(), clientId);
+        if (consentOptional.isEmpty()) {
+            return Optional.empty();
+        }
+
+        if (!hasGrantedAllScopes(consentOptional.get().getScopes(), requestedScopes)) {
+            return Optional.empty();
+        }
+
+        AuthCode authCode = authCodeStore.create(
+                clientId,
+                session.getUserId(),
+                redirectUri,
+                requestedScopes,
+                properties.getAuthCodeTtl()
+        );
+        return Optional.of(authCode);
     }
 
     /**
@@ -245,6 +297,82 @@ public class SsoService {
         if (!client.getRedirectUris().contains(redirectUri)) {
             throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_redirect_uri", "回调地址未注册");
         }
+    }
+
+    /**
+     * 查找有效会话
+     * @param sessionId 会话ID
+     * @return 会话信息（可选）
+     */
+    private Optional<SessionInfo> findValidSession(String sessionId) {
+        if (!StringUtils.hasText(sessionId)) {
+            return Optional.empty();
+        }
+        Optional<SessionInfo> sessionOptional = sessionStore.find(sessionId);
+        if (sessionOptional.isEmpty()) {
+            return Optional.empty();
+        }
+        SessionInfo session = sessionOptional.get();
+        if (session.isExpired(Instant.now())) {
+            sessionStore.delete(sessionId);
+            return Optional.empty();
+        }
+        return Optional.of(session);
+    }
+
+    /**
+     * 记录并合并用户授权同意范围
+     * @param userId 用户ID
+     * @param clientId 客户端ID
+     * @param requestedScopes 本次同意范围
+     */
+    private void recordConsent(String userId, String clientId, List<String> requestedScopes) {
+        List<String> existingScopes = consentStore.find(userId, clientId)
+                .map(ConsentGrant::getScopes)
+                .orElseGet(List::of);
+        List<String> mergedScopes = mergeScopes(existingScopes, requestedScopes);
+        consentStore.save(userId, clientId, mergedScopes);
+    }
+
+    /**
+     * 判断已同意范围是否覆盖请求范围
+     * @param grantedScopes 已同意范围
+     * @param requestedScopes 请求范围
+     * @return 是否完全覆盖
+     */
+    private boolean hasGrantedAllScopes(List<String> grantedScopes, List<String> requestedScopes) {
+        Set<String> grantedScopeSet = grantedScopes.stream()
+                .map(this::normalizeScope)
+                .collect(Collectors.toSet());
+        return requestedScopes.stream()
+                .map(this::normalizeScope)
+                .allMatch(grantedScopeSet::contains);
+    }
+
+    /**
+     * 合并范围并去重
+     * @param existingScopes 已有范围
+     * @param requestedScopes 请求范围
+     * @return 合并后的范围
+     */
+    private List<String> mergeScopes(List<String> existingScopes, List<String> requestedScopes) {
+        Set<String> merged = new LinkedHashSet<>();
+        existingScopes.stream()
+                .map(this::normalizeScope)
+                .forEach(merged::add);
+        requestedScopes.stream()
+                .map(this::normalizeScope)
+                .forEach(merged::add);
+        return new ArrayList<>(merged);
+    }
+
+    /**
+     * 标准化scope
+     * @param scope 原始scope
+     * @return 标准化scope
+     */
+    private String normalizeScope(String scope) {
+        return scope == null ? "" : scope.trim().toLowerCase(Locale.ROOT);
     }
 
     /**

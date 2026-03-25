@@ -9,6 +9,7 @@ import com.hollow.fishsso.service.AuthApplicationService;
 import com.hollow.fishsso.service.dto.LoginResult;
 import com.hollow.fishsso.service.dto.TokenResult;
 import com.hollow.fishsso.service.dto.UserInfoView;
+import com.hollow.fishsso.util.CookieUtils;
 import com.hollow.fishsso.util.SsoCookieNames;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
@@ -53,14 +54,22 @@ public class AuthController {
      * @param redirectUri 重定向URI
      * @param scope 授权范围
      * @param state 状态参数
+     * @param request HTTP请求对象
      * @return 重定向响应
      */
     @GetMapping("/authorize")
     public ResponseEntity<Void> authorize(@RequestParam("client_id") String clientId,
                                           @RequestParam("redirect_uri") String redirectUri,
                                           @RequestParam(value = "scope", required = false) String scope,
-                                          @RequestParam(value = "state", required = false) String state) {
-        URI location = authApplicationService.buildAuthorizeRedirect(clientId, redirectUri, scope, state);
+                                          @RequestParam(value = "state", required = false) String state,
+                                          HttpServletRequest request) {
+        URI location = authApplicationService.buildAuthorizeRedirect(
+                clientId,
+                redirectUri,
+                scope,
+                state,
+                currentSessionId(request)
+        );
         return ResponseEntity.status(HttpStatus.FOUND).location(location).build();
     }
 
@@ -121,6 +130,15 @@ public class AuthController {
     public UserInfoResponse userInfo(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
         UserInfoView user = authApplicationService.getUserInfo(authorization);
         return new UserInfoResponse(user.sub(), user.username(), user.name(), user.email());
+    }
+
+    /**
+     * 获取当前会话ID
+     * @param request HTTP请求对象
+     * @return 会话ID
+     */
+    private String currentSessionId(HttpServletRequest request) {
+        return CookieUtils.getCookieValue(request, SsoCookieNames.SESSION).orElse(null);
     }
 
     /**

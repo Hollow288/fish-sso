@@ -29,7 +29,28 @@ CREATE TABLE sso_client_scope (
     FOREIGN KEY (client_id) REFERENCES sso_client(client_id) ON DELETE CASCADE
 ) COMMENT='客户端权限范围表';
 
+-- 用户授权同意记录表
+CREATE TABLE sso_consent_grant (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '授权记录ID',
+    user_id VARCHAR(64) NOT NULL COMMENT '用户ID',
+    client_id VARCHAR(128) NOT NULL COMMENT '客户端ID',
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间',
+    CONSTRAINT uk_sso_consent_user_client UNIQUE (user_id, client_id),
+    FOREIGN KEY (user_id) REFERENCES sso_user(id) ON DELETE CASCADE,
+    FOREIGN KEY (client_id) REFERENCES sso_client(client_id) ON DELETE CASCADE
+) COMMENT='用户授权同意记录表';
+
+-- 用户授权同意范围表
+CREATE TABLE sso_consent_grant_scope (
+    consent_id BIGINT NOT NULL COMMENT '授权记录ID',
+    scope VARCHAR(128) NOT NULL COMMENT '权限范围',
+    PRIMARY KEY (consent_id, scope),
+    FOREIGN KEY (consent_id) REFERENCES sso_consent_grant(id) ON DELETE CASCADE
+) COMMENT='用户授权同意范围表';
+
 -- 创建索引
 CREATE INDEX idx_user_username ON sso_user(username);
 CREATE INDEX idx_client_redirect_uri ON sso_client_redirect_uri(client_id);
 CREATE INDEX idx_client_scope ON sso_client_scope(client_id);
+CREATE INDEX idx_consent_grant_user_client ON sso_consent_grant(user_id, client_id);
+CREATE INDEX idx_consent_grant_scope ON sso_consent_grant_scope(consent_id);
