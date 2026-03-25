@@ -22,6 +22,19 @@ app:
     session-ttl: 8h
     auth-code-ttl: 5m
     access-token-ttl: 30m
+    login-protection:
+      account:
+        max-failures: 5
+        window: 5m
+        block-duration: 10m
+      ip:
+        max-failures: 40
+        window: 10m
+        block-duration: 30m
+      account-ip:
+        max-failures: 8
+        window: 10m
+        block-duration: 20m
 
 logging:
   level:

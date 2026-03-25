@@ -60,10 +60,12 @@ public class AuthApplicationService {
      * 用户登录
      * @param username 用户名
      * @param password 密码
+     * @param sourceIp 客户端IP
+     * @param userAgent 客户端UA
      * @return 登录结果
      */
-    public LoginResult login(String username, String password) {
-        SessionInfo session = ssoService.login(username, password);
+    public LoginResult login(String username, String password, String sourceIp, String userAgent) {
+        SessionInfo session = ssoService.login(username, password, sourceIp, userAgent);
         return new LoginResult(session.getSessionId(), session.getExpiresAt());
     }
 

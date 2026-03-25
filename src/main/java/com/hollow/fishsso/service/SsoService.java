@@ -36,6 +36,7 @@ public class SsoService {
     private final TokenStore tokenStore;
     private final PasswordEncoder passwordEncoder;
     private final SsoProperties properties;
+    private final LoginProtectionService loginProtectionService;
 
     /**
      * 构造函数
@@ -46,6 +47,7 @@ public class SsoService {
      * @param tokenStore 令牌存储
      * @param passwordEncoder 密码编码器
      * @param properties SSO配置属性
+     * @param loginProtectionService 登录防护服务
      */
     public SsoService(UserRepository userRepository,
                       ClientRepository clientRepository,
@@ -53,7 +55,8 @@ public class SsoService {
                       AuthCodeStore authCodeStore,
                       TokenStore tokenStore,
                       PasswordEncoder passwordEncoder,
-                      SsoProperties properties) {
+                      SsoProperties properties,
+                      LoginProtectionService loginProtectionService) {
         this.userRepository = userRepository;
         this.clientRepository = clientRepository;
         this.sessionStore = sessionStore;
@@ -61,20 +64,27 @@ public class SsoService {
         this.tokenStore = tokenStore;
         this.passwordEncoder = passwordEncoder;
         this.properties = properties;
+        this.loginProtectionService = loginProtectionService;
     }
 
     /**
      * 用户登录
      * @param username 用户名
      * @param password 密码
+     * @param sourceIp 客户端IP
+     * @param userAgent 客户端UA
      * @return 会话信息
      */
-    public SessionInfo login(String username, String password) {
-        UserAccount user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new SsoException(HttpStatus.UNAUTHORIZED, "invalid_credentials", "用户名或密码错误"));
-        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            throw new SsoException(HttpStatus.UNAUTHORIZED, "invalid_credentials", "用户名或密码错误");
+    public SessionInfo login(String username, String password, String sourceIp, String userAgent) {
+        loginProtectionService.assertLoginAllowed(username, sourceIp, userAgent);
+
+        UserAccount user = userRepository.findByUsername(username).orElse(null);
+        if (user == null || !StringUtils.hasText(password) || !passwordEncoder.matches(password, user.getPasswordHash())) {
+            loginProtectionService.recordFailure(username, sourceIp, userAgent, "invalid_credentials");
+            throw invalidCredentials();
         }
+
+        loginProtectionService.recordSuccess(username, sourceIp);
         return sessionStore.create(user.getId(), properties.getSessionTtl());
     }
 
@@ -235,5 +245,13 @@ public class SsoService {
         if (!client.getRedirectUris().contains(redirectUri)) {
             throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_redirect_uri", "回调地址未注册");
         }
+    }
+
+    /**
+     * 构建统一的凭证错误异常
+     * @return 认证异常
+     */
+    private SsoException invalidCredentials() {
+        return new SsoException(HttpStatus.UNAUTHORIZED, "invalid_credentials", "用户名或密码错误");
     }
 }

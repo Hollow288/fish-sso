@@ -10,6 +10,7 @@ import com.hollow.fishsso.service.dto.LoginResult;
 import com.hollow.fishsso.service.dto.TokenResult;
 import com.hollow.fishsso.service.dto.UserInfoView;
 import com.hollow.fishsso.util.SsoCookieNames;
+import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -30,6 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/sso")
 public class AuthController {
+
+    private static final String UNKNOWN_IP = "unknown-ip";
 
     private final AuthApplicationService authApplicationService;
     private final SsoProperties properties;
@@ -63,17 +66,25 @@ public class AuthController {
 
     /**
      * 用户登录接口
-     * @param request 登录请求对象
+     * @param loginRequest 登录请求对象
+     * @param httpRequest HTTP请求对象
      * @return 登录响应
      */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-        LoginResult loginResult = authApplicationService.login(request.username(), request.password());
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletRequest httpRequest) {
+        String sourceIp = resolveClientIp(httpRequest);
+        String userAgent = httpRequest.getHeader(HttpHeaders.USER_AGENT);
+        LoginResult loginResult = authApplicationService.login(
+                loginRequest.username(),
+                loginRequest.password(),
+                sourceIp,
+                userAgent
+        );
         ResponseCookie cookie = buildSessionCookie(loginResult.sessionId());
-        if (StringUtils.hasText(request.returnTo())) {
+        if (StringUtils.hasText(loginRequest.returnTo())) {
             return ResponseEntity.status(HttpStatus.SEE_OTHER)
                     .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                    .header(HttpHeaders.LOCATION, request.returnTo())
+                    .header(HttpHeaders.LOCATION, loginRequest.returnTo())
                     .build();
         }
         LoginResponse response = new LoginResponse(loginResult.sessionId(), loginResult.expiresAt().getEpochSecond());
@@ -125,5 +136,42 @@ public class AuthController {
                 .sameSite("Lax")
                 .maxAge(properties.getSessionTtl())
                 .build();
+    }
+
+    /**
+     * 解析客户端IP
+     * @param request HTTP请求对象
+     * @return 客户端IP
+     */
+    private String resolveClientIp(HttpServletRequest request) {
+        String xForwardedFor = firstForwardedIp(request.getHeader("X-Forwarded-For"));
+        if (StringUtils.hasText(xForwardedFor) && !"unknown".equalsIgnoreCase(xForwardedFor)) {
+            return xForwardedFor;
+        }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (StringUtils.hasText(xRealIp) && !"unknown".equalsIgnoreCase(xRealIp)) {
+            return xRealIp.trim();
+        }
+        String remoteAddr = request.getRemoteAddr();
+        if (!StringUtils.hasText(remoteAddr)) {
+            return UNKNOWN_IP;
+        }
+        return remoteAddr.trim();
+    }
+
+    /**
+     * 从X-Forwarded-For中提取第一个IP
+     * @param xForwardedFor X-Forwarded-For请求头
+     * @return 第一个IP，若为空则返回null
+     */
+    private String firstForwardedIp(String xForwardedFor) {
+        if (!StringUtils.hasText(xForwardedFor)) {
+            return null;
+        }
+        int firstComma = xForwardedFor.indexOf(',');
+        if (firstComma < 0) {
+            return xForwardedFor.trim();
+        }
+        return xForwardedFor.substring(0, firstComma).trim();
     }
 }
