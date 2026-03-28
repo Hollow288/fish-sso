@@ -20,5 +20,12 @@ public interface UserRepository {
      * @return 用户账户（可选）
      */
     Optional<UserAccount> findById(String id);
+
+    /**
+     * 保存用户账户
+     * @param user 用户账户
+     * @return 保存后的用户账户
+     */
+    UserAccount save(UserAccount user);
 }
 

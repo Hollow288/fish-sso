@@ -31,4 +31,9 @@ public class JpaUserRepositoryAdapter implements UserRepository {
     public Optional<UserAccount> findById(String id) {
         return repository.findById(id);
     }
+
+    @Override
+    public UserAccount save(UserAccount user) {
+        return repository.save(user);
+    }
 }

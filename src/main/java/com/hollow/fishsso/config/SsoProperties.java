@@ -19,6 +19,7 @@ public class SsoProperties {
     private Duration authCodeTtl;
     private Duration accessTokenTtl;
     private LoginProtection loginProtection;
+    private PasswordReset passwordReset;
 
     /**
      * 校验必须配置项。
@@ -129,6 +130,56 @@ public class SsoProperties {
      */
     public void setLoginProtection(LoginProtection loginProtection) {
         this.loginProtection = loginProtection;
+    }
+
+    /**
+     * 获取密码重置配置。
+     * @return 密码重置配置
+     */
+    public PasswordReset getPasswordReset() {
+        return passwordReset;
+    }
+
+    /**
+     * 设置密码重置配置。
+     * @param passwordReset 密码重置配置
+     */
+    public void setPasswordReset(PasswordReset passwordReset) {
+        this.passwordReset = passwordReset;
+    }
+
+    /**
+     * 密码重置配置。
+     */
+    public static class PasswordReset {
+
+        private Duration codeTtl = Duration.ofMinutes(5);
+        private int maxVerifyFailures = 5;
+        private Duration sendInterval = Duration.ofSeconds(60);
+
+        public Duration getCodeTtl() {
+            return codeTtl;
+        }
+
+        public void setCodeTtl(Duration codeTtl) {
+            this.codeTtl = codeTtl;
+        }
+
+        public int getMaxVerifyFailures() {
+            return maxVerifyFailures;
+        }
+
+        public void setMaxVerifyFailures(int maxVerifyFailures) {
+            this.maxVerifyFailures = maxVerifyFailures;
+        }
+
+        public Duration getSendInterval() {
+            return sendInterval;
+        }
+
+        public void setSendInterval(Duration sendInterval) {
+            this.sendInterval = sendInterval;
+        }
     }
 
     /**
