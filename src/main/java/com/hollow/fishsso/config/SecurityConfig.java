@@ -29,6 +29,7 @@ public class SecurityConfig {
                                 "/login",
                                 "/consent",
                                 "/sso/**",
+                                "/.well-known/openid-configuration",
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()

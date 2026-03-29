@@ -26,16 +26,31 @@ public class RedisAuthCodeStore implements AuthCodeStore {
         this.repository = repository;
     }
 
+    /**
+     * 创建并保存数据。
+     * @param clientId 客户端 ID
+     * @param userId 用户 ID
+     * @param redirectUri 重定向 URI
+     * @param scopes 授权范围列表
+     * @param nonce OIDC nonce 参数
+     * @param ttl 生存时长
+     * @return 创建后的对象
+     */
     @Override
-    public AuthCode create(String clientId, String userId, String redirectUri, List<String> scopes, Duration ttl) {
+    public AuthCode create(String clientId, String userId, String redirectUri, List<String> scopes, String nonce, Duration ttl) {
         String code = UUID.randomUUID().toString();
         Instant expiresAt = Instant.now().plus(ttl);
-        AuthCode authCode = new AuthCode(code, clientId, userId, redirectUri, scopes, expiresAt);
+        AuthCode authCode = new AuthCode(code, clientId, userId, redirectUri, scopes, nonce, expiresAt);
         authCode.setTtlSeconds(ttl.getSeconds());
         repository.save(authCode);
         return authCode;
     }
 
+    /**
+     * 消费并返回已存储的数据。
+     * @param code 授权码
+     * @return 消费结果
+     */
     @Override
     public Optional<AuthCode> consume(String code) {
         Optional<AuthCode> authCode = repository.findById(code);

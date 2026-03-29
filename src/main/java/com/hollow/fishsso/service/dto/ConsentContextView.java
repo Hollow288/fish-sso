@@ -10,6 +10,7 @@ import java.util.List;
  * @param username 用户名
  * @param displayName 显示名称
  * @param state 状态参数
+ * @param nonce OIDC nonce参数
  * @param scope 授权范围字符串
  */
 public record ConsentContextView(String clientId,
@@ -18,6 +19,7 @@ public record ConsentContextView(String clientId,
                                  String username,
                                  String displayName,
                                  String state,
+                                 String nonce,
                                  String scope) {
 
     public ConsentContextView {

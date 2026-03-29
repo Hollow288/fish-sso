@@ -18,6 +18,9 @@ public class SsoProperties {
     private Duration sessionTtl;
     private Duration authCodeTtl;
     private Duration accessTokenTtl;
+    private Duration idTokenTtl;
+    private Duration refreshTokenTtl;
+    private Jwt jwt = new Jwt();
     private LoginProtection loginProtection;
     private PasswordReset passwordReset;
 
@@ -30,6 +33,19 @@ public class SsoProperties {
         Assert.notNull(sessionTtl, "Missing required property: app.sso.session-ttl");
         Assert.notNull(authCodeTtl, "Missing required property: app.sso.auth-code-ttl");
         Assert.notNull(accessTokenTtl, "Missing required property: app.sso.access-token-ttl");
+        Assert.notNull(idTokenTtl, "Missing required property: app.sso.id-token-ttl");
+        Assert.notNull(refreshTokenTtl, "Missing required property: app.sso.refresh-token-ttl");
+        Assert.notNull(jwt, "Missing required property group: app.sso.jwt");
+        Assert.isTrue(StringUtils.hasText(jwt.getKeyStorePath()),
+                "Missing required property: app.sso.jwt.key-store-path");
+        if (jwt.getRotationPeriod() != null) {
+            Assert.isTrue(!jwt.getRotationPeriod().isNegative() && !jwt.getRotationPeriod().isZero(),
+                    "Property must be > 0: app.sso.jwt.rotation-period");
+        }
+        if (jwt.getPreviousKeyRetention() != null) {
+            Assert.isTrue(!jwt.getPreviousKeyRetention().isNegative() && !jwt.getPreviousKeyRetention().isZero(),
+                    "Property must be > 0: app.sso.jwt.previous-key-retention");
+        }
         Assert.notNull(loginProtection, "Missing required property group: app.sso.login-protection");
         validateRule(loginProtection.getAccount(), "app.sso.login-protection.account");
         validateRule(loginProtection.getIp(), "app.sso.login-protection.ip");
@@ -117,6 +133,54 @@ public class SsoProperties {
     }
 
     /**
+     * 获取ID Token TTL。
+     * @return ID Token TTL
+     */
+    public Duration getIdTokenTtl() {
+        return idTokenTtl;
+    }
+
+    /**
+     * 设置ID Token TTL。
+     * @param idTokenTtl ID Token TTL
+     */
+    public void setIdTokenTtl(Duration idTokenTtl) {
+        this.idTokenTtl = idTokenTtl;
+    }
+
+    /**
+     * 获取刷新令牌 TTL。
+     * @return 刷新令牌 TTL
+     */
+    public Duration getRefreshTokenTtl() {
+        return refreshTokenTtl;
+    }
+
+    /**
+     * 设置刷新令牌 TTL。
+     * @param refreshTokenTtl 刷新令牌 TTL
+     */
+    public void setRefreshTokenTtl(Duration refreshTokenTtl) {
+        this.refreshTokenTtl = refreshTokenTtl;
+    }
+
+    /**
+     * 获取 JWT 配置。
+     * @return JWT 配置
+     */
+    public Jwt getJwt() {
+        return jwt;
+    }
+
+    /**
+     * 设置 JWT 配置。
+     * @param jwt JWT 配置
+     */
+    public void setJwt(Jwt jwt) {
+        this.jwt = jwt;
+    }
+
+    /**
      * 获取登录防护配置。
      * @return 登录防护配置
      */
@@ -157,28 +221,110 @@ public class SsoProperties {
         private int maxVerifyFailures = 5;
         private Duration sendInterval = Duration.ofSeconds(60);
 
+        /**
+         * 获取验证码有效期。
+         * @return 验证码有效期
+         */
         public Duration getCodeTtl() {
             return codeTtl;
         }
 
+        /**
+         * 设置验证码有效期。
+         * @param codeTtl 验证码有效期
+         */
         public void setCodeTtl(Duration codeTtl) {
             this.codeTtl = codeTtl;
         }
 
+        /**
+         * 获取最大校验失败次数。
+         * @return 最大校验失败次数
+         */
         public int getMaxVerifyFailures() {
             return maxVerifyFailures;
         }
 
+        /**
+         * 设置最大校验失败次数。
+         * @param maxVerifyFailures 最大校验失败次数
+         */
         public void setMaxVerifyFailures(int maxVerifyFailures) {
             this.maxVerifyFailures = maxVerifyFailures;
         }
 
+        /**
+         * 获取发送间隔。
+         * @return 发送间隔
+         */
         public Duration getSendInterval() {
             return sendInterval;
         }
 
+        /**
+         * 设置发送间隔。
+         * @param sendInterval 发送间隔
+         */
         public void setSendInterval(Duration sendInterval) {
             this.sendInterval = sendInterval;
+        }
+    }
+
+    /**
+     * JWT 密钥管理配置。
+     */
+    public static class Jwt {
+
+        private String keyStorePath = "keys/sso-jwt-keys.properties";
+        private Duration rotationPeriod = Duration.ofDays(30);
+        private Duration previousKeyRetention;
+
+        /**
+         * 获取密钥文件路径。
+         * @return 密钥文件路径
+         */
+        public String getKeyStorePath() {
+            return keyStorePath;
+        }
+
+        /**
+         * 设置密钥文件路径。
+         * @param keyStorePath 密钥文件路径
+         */
+        public void setKeyStorePath(String keyStorePath) {
+            this.keyStorePath = keyStorePath;
+        }
+
+        /**
+         * 获取轮换周期。
+         * @return 轮换周期
+         */
+        public Duration getRotationPeriod() {
+            return rotationPeriod;
+        }
+
+        /**
+         * 设置轮换周期。
+         * @param rotationPeriod 轮换周期
+         */
+        public void setRotationPeriod(Duration rotationPeriod) {
+            this.rotationPeriod = rotationPeriod;
+        }
+
+        /**
+         * 获取旧密钥保留时长。
+         * @return 保留时长
+         */
+        public Duration getPreviousKeyRetention() {
+            return previousKeyRetention;
+        }
+
+        /**
+         * 设置旧密钥保留时长。
+         * @param previousKeyRetention 保留时长
+         */
+        public void setPreviousKeyRetention(Duration previousKeyRetention) {
+            this.previousKeyRetention = previousKeyRetention;
         }
     }
 

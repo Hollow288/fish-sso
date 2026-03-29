@@ -17,8 +17,9 @@ public interface AuthCodeStore {
      * @param scopes 授权范围列表
      * @param ttl 生存时间
      * @return 授权码
+     * @param nonce OIDC nonce 参数
      */
-    AuthCode create(String clientId, String userId, String redirectUri, List<String> scopes, Duration ttl);
+    AuthCode create(String clientId, String userId, String redirectUri, List<String> scopes, String nonce, Duration ttl);
 
     /**
      * 消费授权码（使用后删除）

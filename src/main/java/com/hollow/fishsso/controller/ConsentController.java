@@ -38,27 +38,25 @@ public class ConsentController {
     }
 
     /**
-     * 获取授权同意上下文
+     * 获取授权同意上下文，返回需要用户确认的授权信息
      * @param clientId 客户端ID
      * @param redirectUri 重定向URI
      * @param scope 授权范围
      * @param state 状态参数
+     * @param nonce OIDC nonce参数
      * @param request HTTP请求对象
-     * @return 授权同意上下文响应
+     * @return 授权同意上下文响应，未登录时返回401
      */
     @GetMapping("/consent")
     public ResponseEntity<?> consentContext(@RequestParam("client_id") String clientId,
                                             @RequestParam("redirect_uri") String redirectUri,
                                             @RequestParam(value = "scope", required = false) String scope,
                                             @RequestParam(value = "state", required = false) String state,
+                                            @RequestParam(value = "nonce", required = false) String nonce,
                                             HttpServletRequest request) {
         try {
             ConsentContextView context = consentApplicationService.getConsentContext(
-                    clientId,
-                    redirectUri,
-                    scope,
-                    state,
-                    currentSessionId(request)
+                    clientId, redirectUri, scope, state, nonce, currentSessionId(request)
             );
             ConsentContextResponse response = new ConsentContextResponse(
                     context.clientId(),
@@ -67,6 +65,7 @@ public class ConsentController {
                     context.username(),
                     context.displayName(),
                     context.state(),
+                    context.nonce(),
                     context.scope()
             );
             return ResponseEntity.ok(response);
@@ -76,10 +75,10 @@ public class ConsentController {
     }
 
     /**
-     * 提交授权同意
-     * @param consentRequest 授权同意请求对象
+     * 提交授权同意（批准或拒绝）
+     * @param consentRequest 授权同意请求体
      * @param request HTTP请求对象
-     * @return 重定向响应
+     * @return 重定向URL响应，未登录时返回401
      */
     @PostMapping("/consent")
     public ResponseEntity<?> consentSubmit(@RequestBody ConsentRequest consentRequest,
@@ -90,6 +89,7 @@ public class ConsentController {
                     consentRequest.redirectUri(),
                     consentRequest.scope(),
                     consentRequest.state(),
+                    consentRequest.nonce(),
                     consentRequest.action(),
                     currentSessionId(request)
             );
@@ -100,17 +100,17 @@ public class ConsentController {
     }
 
     /**
-     * 获取当前会话ID
+     * 从请求中获取当前会话ID
      * @param request HTTP请求对象
-     * @return 会话ID
+     * @return 会话ID，不存在时返回null
      */
     private String currentSessionId(HttpServletRequest request) {
         return CookieUtils.getCookieValue(request, SsoCookieNames.SESSION).orElse(null);
     }
 
     /**
-     * 处理授权同意异常
-     * @param ex SSO异常对象
+     * 处理授权同意相关异常，login_required时返回登录URL，其他错误返回ErrorResponse
+     * @param ex SSO异常
      * @param request HTTP请求对象
      * @return 错误响应
      */

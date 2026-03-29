@@ -1,15 +1,11 @@
 package com.hollow.fishsso.service;
 
 import com.hollow.fishsso.exception.SsoException;
-import com.hollow.fishsso.model.AccessToken;
 import com.hollow.fishsso.model.SessionInfo;
-import com.hollow.fishsso.model.UserAccount;
 import com.hollow.fishsso.service.dto.LoginResult;
-import com.hollow.fishsso.service.dto.TokenResult;
+import com.hollow.fishsso.service.dto.TokenSet;
 import com.hollow.fishsso.service.dto.UserInfoView;
 import java.net.URI;
-import java.time.Duration;
-import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -21,41 +17,43 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Service
 public class AuthApplicationService {
 
-    private static final String SUPPORTED_GRANT_TYPE = "authorization_code";
+    private static final String GRANT_AUTHORIZATION_CODE = "authorization_code";
+    private static final String GRANT_REFRESH_TOKEN = "refresh_token";
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final SsoService ssoService;
 
     /**
      * 构造函数
-     * @param ssoService SSO服务
+     * @param ssoService SSO核心服务
      */
     public AuthApplicationService(SsoService ssoService) {
         this.ssoService = ssoService;
     }
 
     /**
-     * 构建授权重定向URI
+     * 构建授权重定向URI，若已有同意记录则自动批准并携带授权码重定向，否则重定向到同意页面
      * @param clientId 客户端ID
      * @param redirectUri 重定向URI
      * @param scope 授权范围
      * @param state 状态参数
-     * @param sessionId 会话ID
+     * @param nonce OIDC nonce参数
+     * @param sessionId 当前会话ID
      * @return 重定向URI
      */
-    public URI buildAuthorizeRedirect(String clientId, String redirectUri, String scope, String state, String sessionId) {
-        return ssoService.tryAutoApproveAuthorization(clientId, redirectUri, scope, sessionId)
+    public URI buildAuthorizeRedirect(String clientId, String redirectUri, String scope, String state, String nonce, String sessionId) {
+        return ssoService.tryAutoApproveAuthorization(clientId, redirectUri, scope, nonce, sessionId)
                 .map(authCode -> buildCodeRedirect(redirectUri, authCode.getCode(), state))
-                .orElseGet(() -> buildConsentRedirect(clientId, redirectUri, scope, state));
+                .orElseGet(() -> buildConsentRedirect(clientId, redirectUri, scope, state, nonce));
     }
 
     /**
      * 用户登录
      * @param username 用户名
      * @param password 密码
-     * @param sourceIp 客户端IP
-     * @param userAgent 客户端UA
-     * @return 登录结果
+     * @param sourceIp 来源IP地址
+     * @param userAgent 用户代理字符串
+     * @return 登录结果（含会话ID和过期时间）
      */
     public LoginResult login(String username, String password, String sourceIp, String userAgent) {
         SessionInfo session = ssoService.login(username, password, sourceIp, userAgent);
@@ -63,47 +61,72 @@ public class AuthApplicationService {
     }
 
     /**
-     * 授权码换取令牌
+     * 统一令牌端点处理（根据 grant_type 分发到授权码换取或刷新令牌）
      * @param grantType 授权类型
      * @param code 授权码
      * @param redirectUri 重定向URI
      * @param clientId 客户端ID
      * @param clientSecret 客户端密钥
-     * @return 令牌结果
+     * @param refreshToken 刷新令牌
+     * @return 令牌集合（access_token、id_token、refresh_token）
      */
-    public TokenResult exchangeCode(String grantType,
-                                    String code,
-                                    String redirectUri,
-                                    String clientId,
-                                    String clientSecret) {
-        if (!SUPPORTED_GRANT_TYPE.equals(grantType)) {
-            throw new SsoException(HttpStatus.BAD_REQUEST, "unsupported_grant_type", "仅支持 authorization_code");
+    public TokenSet handleTokenRequest(String grantType,
+                                       String code,
+                                       String redirectUri,
+                                       String clientId,
+                                       String clientSecret,
+                                       String refreshToken) {
+        if (GRANT_AUTHORIZATION_CODE.equals(grantType)) {
+            return ssoService.exchangeCode(clientId, clientSecret, code, redirectUri);
+        } else if (GRANT_REFRESH_TOKEN.equals(grantType)) {
+            if (!StringUtils.hasText(refreshToken)) {
+                throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_request", "缺少 refresh_token 参数");
+            }
+            return ssoService.refreshToken(clientId, clientSecret, refreshToken);
+        } else {
+            throw new SsoException(HttpStatus.BAD_REQUEST, "unsupported_grant_type",
+                    "仅支持 authorization_code 和 refresh_token");
         }
-        AccessToken token = ssoService.exchangeCode(clientId, clientSecret, code, redirectUri);
-        long expiresIn = Math.max(Duration.between(Instant.now(), token.getExpiresAt()).getSeconds(), 0);
-        return new TokenResult(token.getToken(), "bearer", expiresIn, String.join(" ", token.getScopes()));
     }
 
     /**
      * 获取用户信息
-     * @param authorization 授权头
+     * @param authorization Authorization请求头（Bearer {access_token}）
      * @return 用户信息视图
      */
     public UserInfoView getUserInfo(String authorization) {
         String accessToken = resolveBearerToken(authorization);
-        UserAccount user = ssoService.userInfo(accessToken);
-        return new UserInfoView(user.getId(), user.getUsername(), user.getDisplayName(), user.getEmail());
+        return ssoService.userInfo(accessToken);
     }
 
     /**
-     * 构建同意页重定向URI
+     * 撤销令牌
+     * @param clientId 客户端ID
+     * @param clientSecret 客户端密钥
+     * @param token 待撤销的令牌
+     */
+    public void revokeToken(String clientId, String clientSecret, String token) {
+        ssoService.revokeToken(clientId, clientSecret, token);
+    }
+
+    /**
+     * 登出，删除指定会话
+     * @param sessionId 会话ID
+     */
+    public void logout(String sessionId) {
+        ssoService.logout(sessionId);
+    }
+
+    /**
+     * 构建跳转到同意页面的重定向URI
      * @param clientId 客户端ID
      * @param redirectUri 重定向URI
      * @param scope 授权范围
      * @param state 状态参数
-     * @return 重定向URI
+     * @param nonce OIDC nonce参数
+     * @return 同意页面URI
      */
-    private URI buildConsentRedirect(String clientId, String redirectUri, String scope, String state) {
+    private URI buildConsentRedirect(String clientId, String redirectUri, String scope, String state, String nonce) {
         UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/consent")
                 .queryParam("client_id", clientId)
                 .queryParam("redirect_uri", redirectUri);
@@ -113,15 +136,19 @@ public class AuthApplicationService {
         if (StringUtils.hasText(state)) {
             builder.queryParam("state", state);
         }
+        if (StringUtils.hasText(nonce)) {
+            builder.queryParam("nonce", nonce);
+        }
         return builder.build().encode().toUri();
     }
 
+
     /**
-     * 构建授权码重定向URI
+     * 构建携带授权码的重定向URI
      * @param redirectUri 重定向URI
      * @param code 授权码
      * @param state 状态参数
-     * @return 重定向URI
+     * @return 携带code参数的重定向URI
      */
     private URI buildCodeRedirect(String redirectUri, String code, String state) {
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(redirectUri)
@@ -133,9 +160,10 @@ public class AuthApplicationService {
     }
 
     /**
-     * 解析Bearer令牌
-     * @param authorization 授权头
-     * @return 访问令牌
+     * 从Authorization头中解析Bearer令牌
+     * @param authorization Authorization请求头
+     * @return 令牌字符串
+     * @throws SsoException 当缺少或格式不正确时抛出
      */
     private String resolveBearerToken(String authorization) {
         if (!StringUtils.hasText(authorization) || !authorization.startsWith(BEARER_PREFIX)) {

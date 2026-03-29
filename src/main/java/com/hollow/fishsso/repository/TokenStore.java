@@ -11,13 +11,14 @@ import java.util.Optional;
 public interface TokenStore {
     /**
      * 创建访问令牌
+     * @param token 访问令牌字符串
      * @param clientId 客户端ID
      * @param userId 用户ID
      * @param scopes 授权范围列表
      * @param ttl 生存时间
      * @return 访问令牌
      */
-    AccessToken create(String clientId, String userId, List<String> scopes, Duration ttl);
+    AccessToken create(String token, String clientId, String userId, List<String> scopes, Duration ttl);
 
     /**
      * 查找访问令牌
@@ -25,5 +26,11 @@ public interface TokenStore {
      * @return 访问令牌（可选）
      */
     Optional<AccessToken> find(String token);
+
+    /**
+     * 删除访问令牌
+     * @param token 令牌
+     */
+    void delete(String token);
 }
 

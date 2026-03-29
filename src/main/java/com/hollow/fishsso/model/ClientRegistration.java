@@ -36,6 +36,9 @@ public class ClientRegistration {
     @Column(name = "scope", nullable = false, length = 128)
     private List<String> scopes = new ArrayList<>();
 
+    /**
+     * 构造函数。
+     */
     public ClientRegistration() {
     }
 
@@ -54,34 +57,66 @@ public class ClientRegistration {
         this.scopes = scopes == null ? new ArrayList<>() : new ArrayList<>(scopes);
     }
 
+    /**
+     * 获取客户端 ID。
+     * @return 客户端 ID
+     */
     public String getClientId() {
         return clientId;
     }
 
+    /**
+     * 设置客户端 ID。
+     * @param clientId 客户端 ID
+     */
     public void setClientId(String clientId) {
         this.clientId = clientId;
     }
 
+    /**
+     * 获取客户端密钥哈希。
+     * @return 客户端密钥哈希
+     */
     public String getClientSecretHash() {
         return clientSecretHash;
     }
 
+    /**
+     * 设置客户端密钥哈希。
+     * @param clientSecretHash 客户端密钥哈希
+     */
     public void setClientSecretHash(String clientSecretHash) {
         this.clientSecretHash = clientSecretHash;
     }
 
+    /**
+     * 获取重定向 URI 列表。
+     * @return 重定向 URI 列表
+     */
     public List<String> getRedirectUris() {
         return redirectUris;
     }
 
+    /**
+     * 设置重定向 URI 列表。
+     * @param redirectUris 重定向 URI 列表
+     */
     public void setRedirectUris(List<String> redirectUris) {
         this.redirectUris = redirectUris == null ? new ArrayList<>() : new ArrayList<>(redirectUris);
     }
 
+    /**
+     * 获取授权范围列表。
+     * @return 授权范围列表
+     */
     public List<String> getScopes() {
         return scopes;
     }
 
+    /**
+     * 设置授权范围列表。
+     * @param scopes 授权范围列表
+     */
     public void setScopes(List<String> scopes) {
         this.scopes = scopes == null ? new ArrayList<>() : new ArrayList<>(scopes);
     }

@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * @param redirectUri 重定向URI
  * @param scope 授权范围
  * @param state 状态参数
+ * @param nonce OIDC nonce参数
  * @param action 操作类型（允许/拒绝）
  */
 public record ConsentRequest(
@@ -15,6 +16,7 @@ public record ConsentRequest(
         @JsonProperty("redirect_uri") String redirectUri,
         String scope,
         String state,
+        String nonce,
         String action
 ) {
 }

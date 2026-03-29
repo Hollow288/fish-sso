@@ -33,6 +33,13 @@ app:
     session-ttl: 8h
     auth-code-ttl: 5m
     access-token-ttl: 30m
+    id-token-ttl: 30m
+    refresh-token-ttl: 7d
+    jwt:
+      key-store-path: keys/sso-jwt-keys.properties
+      rotation-period: 30d
+      # 可选，不配置时默认按 access-token-ttl/id-token-ttl 的最大值 + 5 分钟
+      previous-key-retention: 1d
     login-protection:
       account:
         max-failures: 5

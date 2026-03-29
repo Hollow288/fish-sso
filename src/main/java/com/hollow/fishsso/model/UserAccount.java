@@ -30,6 +30,9 @@ public class UserAccount {
     @Column(name = "email", length = 255)
     private String email;
 
+    /**
+     * 构造函数。
+     */
     public UserAccount() {
     }
 
@@ -59,42 +62,82 @@ public class UserAccount {
         }
     }
 
+    /**
+     * 获取ID。
+     * @return ID
+     */
     public String getId() {
         return id;
     }
 
+    /**
+     * 设置ID。
+     * @param id ID
+     */
     public void setId(String id) {
         this.id = id;
     }
 
+    /**
+     * 获取用户名。
+     * @return 用户名
+     */
     public String getUsername() {
         return username;
     }
 
+    /**
+     * 设置用户名。
+     * @param username 用户名
+     */
     public void setUsername(String username) {
         this.username = username;
     }
 
+    /**
+     * 获取密码哈希。
+     * @return 密码哈希
+     */
     public String getPasswordHash() {
         return passwordHash;
     }
 
+    /**
+     * 设置密码哈希。
+     * @param passwordHash 密码哈希
+     */
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
     }
 
+    /**
+     * 获取显示名称。
+     * @return 显示名称
+     */
     public String getDisplayName() {
         return displayName;
     }
 
+    /**
+     * 设置显示名称。
+     * @param displayName 显示名称
+     */
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
     }
 
+    /**
+     * 获取邮箱地址。
+     * @return 邮箱地址
+     */
     public String getEmail() {
         return email;
     }
 
+    /**
+     * 设置邮箱地址。
+     * @param email 邮箱地址
+     */
     public void setEmail(String email) {
         this.email = email;
     }

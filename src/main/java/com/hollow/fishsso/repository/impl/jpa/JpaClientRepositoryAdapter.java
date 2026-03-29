@@ -22,6 +22,11 @@ public class JpaClientRepositoryAdapter implements ClientRepository {
         this.repository = repository;
     }
 
+    /**
+     * 根据客户端 ID 查询客户端信息。
+     * @param clientId 客户端 ID
+     * @return 匹配的客户端信息
+     */
     @Override
     public Optional<ClientRegistration> findByClientId(String clientId) {
         return repository.findByClientId(clientId);

@@ -6,6 +6,9 @@ package com.hollow.fishsso.repository.impl.redis;
 @Deprecated
 public final class RedisConsentStore {
 
+    /**
+     * 私有构造函数。
+     */
     private RedisConsentStore() {
     }
 }

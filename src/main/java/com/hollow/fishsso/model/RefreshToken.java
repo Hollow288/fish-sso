@@ -8,10 +8,10 @@ import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.redis.core.TimeToLive;
 
 /**
- * 访问令牌模型
+ * 刷新令牌模型
  */
-@RedisHash("sso:access_tokens")
-public class AccessToken {
+@RedisHash("sso:refresh_tokens")
+public class RefreshToken {
 
     @Id
     private String token;
@@ -25,18 +25,18 @@ public class AccessToken {
     /**
      * 构造函数。
      */
-    public AccessToken() {
+    public RefreshToken() {
     }
 
     /**
-     * 构造函数
+     * 构造函数。
      * @param token 令牌
-     * @param clientId 客户端ID
-     * @param userId 用户ID
+     * @param clientId 客户端 ID
+     * @param userId 用户 ID
      * @param scopes 授权范围列表
      * @param expiresAt 过期时间
      */
-    public AccessToken(String token, String clientId, String userId, List<String> scopes, Instant expiresAt) {
+    public RefreshToken(String token, String clientId, String userId, List<String> scopes, Instant expiresAt) {
         this.token = token;
         this.clientId = clientId;
         this.userId = userId;
@@ -141,9 +141,9 @@ public class AccessToken {
     }
 
     /**
-     * 判断令牌是否过期
+     * 判断当前数据是否已过期。
      * @param now 当前时间
-     * @return 是否过期
+     * @return 是否expired
      */
     public boolean isExpired(Instant now) {
         return expiresAt.isBefore(now);

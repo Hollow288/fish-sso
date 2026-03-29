@@ -24,14 +24,26 @@ public class SsoException extends RuntimeException {
         this.errorDescription = errorDescription;
     }
 
+    /**
+     * 获取HTTP 状态。
+     * @return HTTP 状态
+     */
     public HttpStatus getStatus() {
         return status;
     }
 
+    /**
+     * 获取错误码。
+     * @return 错误码
+     */
     public String getError() {
         return error;
     }
 
+    /**
+     * 获取错误描述。
+     * @return 错误描述
+     */
     public String getErrorDescription() {
         return errorDescription;
     }

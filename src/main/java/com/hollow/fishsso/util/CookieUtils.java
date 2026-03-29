@@ -10,6 +10,9 @@ import java.util.Optional;
  */
 public final class CookieUtils {
 
+    /**
+     * 私有构造函数。
+     */
     private CookieUtils() {
     }
 

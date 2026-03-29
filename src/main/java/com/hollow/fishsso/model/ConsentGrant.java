@@ -49,6 +49,9 @@ public class ConsentGrant {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    /**
+     * 构造函数。
+     */
     public ConsentGrant() {
     }
 
@@ -66,48 +69,91 @@ public class ConsentGrant {
         this.updatedAt = updatedAt;
     }
 
+    /**
+     * 确保更新时间已初始化。
+     */
     @PrePersist
     @PreUpdate
     public void ensureUpdatedAt() {
         updatedAt = Instant.now();
     }
 
+    /**
+     * 获取ID。
+     * @return ID
+     */
     public Long getId() {
         return id;
     }
 
+    /**
+     * 设置ID。
+     * @param id ID
+     */
     public void setId(Long id) {
         this.id = id;
     }
 
+    /**
+     * 获取用户 ID。
+     * @return 用户 ID
+     */
     public String getUserId() {
         return userId;
     }
 
+    /**
+     * 设置用户 ID。
+     * @param userId 用户 ID
+     */
     public void setUserId(String userId) {
         this.userId = userId;
     }
 
+    /**
+     * 获取客户端 ID。
+     * @return 客户端 ID
+     */
     public String getClientId() {
         return clientId;
     }
 
+    /**
+     * 设置客户端 ID。
+     * @param clientId 客户端 ID
+     */
     public void setClientId(String clientId) {
         this.clientId = clientId;
     }
 
+    /**
+     * 获取授权范围列表。
+     * @return 授权范围列表
+     */
     public List<String> getScopes() {
         return scopes;
     }
 
+    /**
+     * 设置授权范围列表。
+     * @param scopes 授权范围列表
+     */
     public void setScopes(List<String> scopes) {
         this.scopes = scopes == null ? new ArrayList<>() : new ArrayList<>(scopes);
     }
 
+    /**
+     * 获取更新时间。
+     * @return 更新时间
+     */
     public Instant getUpdatedAt() {
         return updatedAt;
     }
 
+    /**
+     * 设置更新时间。
+     * @param updatedAt 更新时间
+     */
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
     }

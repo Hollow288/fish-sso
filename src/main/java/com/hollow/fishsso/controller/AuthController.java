@@ -7,12 +7,13 @@ import com.hollow.fishsso.controller.dto.TokenResponse;
 import com.hollow.fishsso.controller.dto.UserInfoResponse;
 import com.hollow.fishsso.service.AuthApplicationService;
 import com.hollow.fishsso.service.dto.LoginResult;
-import com.hollow.fishsso.service.dto.TokenResult;
+import com.hollow.fishsso.service.dto.TokenSet;
 import com.hollow.fishsso.service.dto.UserInfoView;
 import com.hollow.fishsso.util.CookieUtils;
 import com.hollow.fishsso.util.SsoCookieNames;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
+import java.util.Map;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -49,25 +50,28 @@ public class AuthController {
     }
 
     /**
-     * OAuth2授权端点
+     * OAuth2/OIDC授权端点，发起授权流程
      * @param clientId 客户端ID
      * @param redirectUri 重定向URI
      * @param scope 授权范围
-     * @param state 状态参数
+     * @param state 状态参数，用于防CSRF
+     * @param nonce OIDC nonce参数
      * @param request HTTP请求对象
-     * @return 重定向响应
+     * @return 302重定向响应
      */
     @GetMapping("/authorize")
     public ResponseEntity<Void> authorize(@RequestParam("client_id") String clientId,
                                           @RequestParam("redirect_uri") String redirectUri,
                                           @RequestParam(value = "scope", required = false) String scope,
                                           @RequestParam(value = "state", required = false) String state,
+                                          @RequestParam(value = "nonce", required = false) String nonce,
                                           HttpServletRequest request) {
         URI location = authApplicationService.buildAuthorizeRedirect(
                 clientId,
                 redirectUri,
                 scope,
                 state,
+                nonce,
                 currentSessionId(request)
         );
         return ResponseEntity.status(HttpStatus.FOUND).location(location).build();
@@ -75,9 +79,9 @@ public class AuthController {
 
     /**
      * 用户登录接口
-     * @param loginRequest 登录请求对象
-     * @param httpRequest HTTP请求对象
-     * @return 登录响应
+     * @param loginRequest 登录请求体（用户名、密码、可选返回URL）
+     * @param httpRequest HTTP请求对象，用于获取客户端IP和UA
+     * @return 登录成功响应（含会话Cookie），若有returnTo则303重定向
      */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletRequest httpRequest) {
@@ -103,27 +107,37 @@ public class AuthController {
     }
 
     /**
-     * 令牌交换接口
-     * @param grantType 授权类型
-     * @param code 授权码
-     * @param redirectUri 重定向URI
+     * 令牌端点（支持 authorization_code 和 refresh_token 两种 grant_type）
+     * @param grantType 授权类型（authorization_code 或 refresh_token）
+     * @param code 授权码（authorization_code 模式必传）
+     * @param redirectUri 重定向URI（authorization_code 模式必传）
      * @param clientId 客户端ID
      * @param clientSecret 客户端密钥
-     * @return 令牌响应
+     * @param refreshToken 刷新令牌（refresh_token 模式必传）
+     * @return 令牌响应（包含 access_token、id_token、refresh_token 等）
      */
     @PostMapping("/token")
     public TokenResponse token(@RequestParam("grant_type") String grantType,
-                               @RequestParam("code") String code,
-                               @RequestParam("redirect_uri") String redirectUri,
+                               @RequestParam(value = "code", required = false) String code,
+                               @RequestParam(value = "redirect_uri", required = false) String redirectUri,
                                @RequestParam("client_id") String clientId,
-                               @RequestParam("client_secret") String clientSecret) {
-        TokenResult token = authApplicationService.exchangeCode(grantType, code, redirectUri, clientId, clientSecret);
-        return new TokenResponse(token.accessToken(), token.tokenType(), token.expiresIn(), token.scope());
+                               @RequestParam("client_secret") String clientSecret,
+                               @RequestParam(value = "refresh_token", required = false) String refreshToken) {
+        TokenSet tokenSet = authApplicationService.handleTokenRequest(
+                grantType, code, redirectUri, clientId, clientSecret, refreshToken);
+        return new TokenResponse(
+                tokenSet.accessToken(),
+                tokenSet.tokenType(),
+                tokenSet.expiresIn(),
+                tokenSet.scope(),
+                tokenSet.idToken(),
+                tokenSet.refreshToken()
+        );
     }
 
     /**
      * 获取用户信息接口
-     * @param authorization 授权头信息
+     * @param authorization Authorization请求头（Bearer {access_token}）
      * @return 用户信息响应
      */
     @GetMapping("/userinfo")
@@ -133,9 +147,39 @@ public class AuthController {
     }
 
     /**
-     * 获取当前会话ID
+     * 令牌撤销端点（RFC 7009）
+     * @param token 待撤销的令牌
+     * @param clientId 客户端ID
+     * @param clientSecret 客户端密钥
+     * @return 200空响应
+     */
+    @PostMapping("/revoke")
+    public ResponseEntity<Void> revoke(@RequestParam("token") String token,
+                                       @RequestParam("client_id") String clientId,
+                                       @RequestParam("client_secret") String clientSecret) {
+        authApplicationService.revokeToken(clientId, clientSecret, token);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 登出端点，清除会话
      * @param request HTTP请求对象
-     * @return 会话ID
+     * @return 登出成功响应（含清除会话Cookie）
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
+        String sessionId = currentSessionId(request);
+        authApplicationService.logout(sessionId);
+        ResponseCookie cookie = clearSessionCookie();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(Map.of("message", "已登出"));
+    }
+
+    /**
+     * 从请求中获取当前会话ID
+     * @param request HTTP请求对象
+     * @return 会话ID，不存在时返回null
      */
     private String currentSessionId(HttpServletRequest request) {
         return CookieUtils.getCookieValue(request, SsoCookieNames.SESSION).orElse(null);
@@ -144,7 +188,7 @@ public class AuthController {
     /**
      * 构建会话Cookie
      * @param sessionId 会话ID
-     * @return 响应Cookie对象
+     * @return 会话Cookie
      */
     private ResponseCookie buildSessionCookie(String sessionId) {
         return ResponseCookie.from(SsoCookieNames.SESSION, sessionId)
@@ -157,9 +201,23 @@ public class AuthController {
     }
 
     /**
-     * 解析客户端IP
+     * 构建清除会话的Cookie（maxAge=0）
+     * @return 清除会话Cookie
+     */
+    private ResponseCookie clearSessionCookie() {
+        return ResponseCookie.from(SsoCookieNames.SESSION, "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(0)
+                .build();
+    }
+
+    /**
+     * 解析客户端真实IP地址，依次尝试 X-Forwarded-For、X-Real-IP、RemoteAddr
      * @param request HTTP请求对象
-     * @return 客户端IP
+     * @return 客户端IP地址
      */
     private String resolveClientIp(HttpServletRequest request) {
         String xForwardedFor = firstForwardedIp(request.getHeader("X-Forwarded-For"));
@@ -178,9 +236,9 @@ public class AuthController {
     }
 
     /**
-     * 从X-Forwarded-For中提取第一个IP
-     * @param xForwardedFor X-Forwarded-For请求头
-     * @return 第一个IP，若为空则返回null
+     * 从 X-Forwarded-For 头中提取第一个IP地址
+     * @param xForwardedFor X-Forwarded-For头的值
+     * @return 第一个IP地址，为空时返回null
      */
     private String firstForwardedIp(String xForwardedFor) {
         if (!StringUtils.hasText(xForwardedFor)) {

@@ -24,11 +24,23 @@ public class JpaConsentStoreAdapter implements ConsentStore {
         this.repository = repository;
     }
 
+    /**
+     * 查询指定数据。
+     * @param userId 用户 ID
+     * @param clientId 客户端 ID
+     * @return 查询结果
+     */
     @Override
     public Optional<ConsentGrant> find(String userId, String clientId) {
         return repository.findByUserIdAndClientId(userId, clientId);
     }
 
+    /**
+     * 保存数据。
+     * @param userId 用户 ID
+     * @param clientId 客户端 ID
+     * @param scopes 授权范围列表
+     */
     @Override
     public void save(String userId, String clientId, List<String> scopes) {
         ConsentGrant consentGrant = repository.findByUserIdAndClientId(userId, clientId)

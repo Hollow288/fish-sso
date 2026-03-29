@@ -18,6 +18,9 @@ public class SessionInfo {
     @TimeToLive
     private Long ttlSeconds;
 
+    /**
+     * 构造函数。
+     */
     public SessionInfo() {
     }
 
@@ -33,34 +36,66 @@ public class SessionInfo {
         this.expiresAt = expiresAt;
     }
 
+    /**
+     * 获取会话 ID。
+     * @return 会话 ID
+     */
     public String getSessionId() {
         return sessionId;
     }
 
+    /**
+     * 设置会话 ID。
+     * @param sessionId 会话 ID
+     */
     public void setSessionId(String sessionId) {
         this.sessionId = sessionId;
     }
 
+    /**
+     * 获取用户 ID。
+     * @return 用户 ID
+     */
     public String getUserId() {
         return userId;
     }
 
+    /**
+     * 设置用户 ID。
+     * @param userId 用户 ID
+     */
     public void setUserId(String userId) {
         this.userId = userId;
     }
 
+    /**
+     * 获取过期时间。
+     * @return 过期时间
+     */
     public Instant getExpiresAt() {
         return expiresAt;
     }
 
+    /**
+     * 设置过期时间。
+     * @param expiresAt 过期时间
+     */
     public void setExpiresAt(Instant expiresAt) {
         this.expiresAt = expiresAt;
     }
 
+    /**
+     * 获取TTL 秒数。
+     * @return TTL 秒数
+     */
     public Long getTtlSeconds() {
         return ttlSeconds;
     }
 
+    /**
+     * 设置TTL 秒数。
+     * @param ttlSeconds TTL 秒数
+     */
     public void setTtlSeconds(Long ttlSeconds) {
         this.ttlSeconds = ttlSeconds;
     }

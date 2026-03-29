@@ -10,6 +10,9 @@ public final class SsoCookieNames {
      */
     public static final String SESSION = "SSO_SESSION";
 
+    /**
+     * 私有构造函数。
+     */
     private SsoCookieNames() {
     }
 }
