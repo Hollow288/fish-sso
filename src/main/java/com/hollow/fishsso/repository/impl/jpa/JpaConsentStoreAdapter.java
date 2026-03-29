@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * JPA授权同意记录存储适配器
@@ -36,6 +37,16 @@ public class JpaConsentStoreAdapter implements ConsentStore {
     }
 
     /**
+     * 查询用户所有授权同意记录
+     * @param userId 用户ID
+     * @return 授权同意记录列表
+     */
+    @Override
+    public List<ConsentGrant> findAllByUserId(String userId) {
+        return repository.findAllByUserId(userId);
+    }
+
+    /**
      * 保存数据。
      * @param userId 用户 ID
      * @param clientId 客户端 ID
@@ -50,5 +61,16 @@ public class JpaConsentStoreAdapter implements ConsentStore {
         consentGrant.setScopes(scopes);
         consentGrant.setUpdatedAt(Instant.now());
         repository.save(consentGrant);
+    }
+
+    /**
+     * 删除用户对指定客户端的授权同意记录
+     * @param userId 用户ID
+     * @param clientId 客户端ID
+     */
+    @Override
+    @Transactional
+    public void delete(String userId, String clientId) {
+        repository.deleteByUserIdAndClientId(userId, clientId);
     }
 }

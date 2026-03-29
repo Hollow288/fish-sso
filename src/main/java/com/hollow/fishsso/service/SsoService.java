@@ -17,6 +17,7 @@ import com.hollow.fishsso.repository.SessionStore;
 import com.hollow.fishsso.repository.TokenStore;
 import com.hollow.fishsso.repository.UserRepository;
 import com.hollow.fishsso.service.dto.AuthorizationContext;
+import com.hollow.fishsso.service.dto.AuthorizedClientView;
 import com.hollow.fishsso.service.dto.TokenSet;
 import com.hollow.fishsso.service.dto.UserInfoView;
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -312,6 +313,41 @@ public class SsoService {
         tokenStore.find(token)
                 .filter(accessToken -> accessToken.getClientId().equals(clientId))
                 .ifPresent(accessToken -> tokenStore.delete(token));
+    }
+
+    /**
+     * 查询当前登录用户已授权的所有客户端
+     * @param sessionId 当前会话ID
+     * @return 已授权客户端列表
+     */
+    public List<AuthorizedClientView> listAuthorizedClients(String sessionId) {
+        SessionInfo session = requireSession(sessionId);
+        return consentStore.findAllByUserId(session.getUserId()).stream()
+                .map(grant -> {
+                    String homeUrl = clientRepository.findByClientId(grant.getClientId())
+                            .map(ClientRegistration::getHomeUrl)
+                            .orElse(null);
+                    return new AuthorizedClientView(
+                            grant.getClientId(),
+                            grant.getScopes(),
+                            grant.getUpdatedAt(),
+                            homeUrl
+                    );
+                })
+                .toList();
+    }
+
+    /**
+     * 撤销当前登录用户对指定客户端的授权（删除同意记录及相关令牌）
+     * @param sessionId 当前会话ID
+     * @param clientId 待撤销的客户端ID
+     */
+    public void revokeClientAuthorization(String sessionId, String clientId) {
+        SessionInfo session = requireSession(sessionId);
+        String userId = session.getUserId();
+        consentStore.delete(userId, clientId);
+        tokenStore.deleteByUserIdAndClientId(userId, clientId);
+        refreshTokenStore.deleteByUserIdAndClientId(userId, clientId);
     }
 
     /**

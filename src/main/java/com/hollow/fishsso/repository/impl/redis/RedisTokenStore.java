@@ -60,4 +60,17 @@ public class RedisTokenStore implements TokenStore {
     public void delete(String token) {
         repository.deleteById(token);
     }
+
+    /**
+     * 删除用户在指定客户端下的所有访问令牌
+     * @param userId 用户ID
+     * @param clientId 客户端ID
+     */
+    @Override
+    public void deleteByUserIdAndClientId(String userId, String clientId) {
+        List<AccessToken> tokens = repository.findByUserIdAndClientId(userId, clientId);
+        if (!tokens.isEmpty()) {
+            repository.deleteAll(tokens);
+        }
+    }
 }

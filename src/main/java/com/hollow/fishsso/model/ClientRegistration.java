@@ -26,6 +26,9 @@ public class ClientRegistration {
     @Column(name = "client_secret_hash", nullable = false, length = 255)
     private String clientSecretHash;
 
+    @Column(name = "home_url", length = 512)
+    private String homeUrl;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "sso_client_redirect_uri", joinColumns = @JoinColumn(name = "client_id"))
     @Column(name = "redirect_uri", nullable = false, length = 512)
@@ -55,6 +58,22 @@ public class ClientRegistration {
         this.clientSecretHash = clientSecretHash;
         this.redirectUris = redirectUris == null ? new ArrayList<>() : new ArrayList<>(redirectUris);
         this.scopes = scopes == null ? new ArrayList<>() : new ArrayList<>(scopes);
+    }
+
+    /**
+     * 获取客户端首页地址。
+     * @return 客户端首页地址
+     */
+    public String getHomeUrl() {
+        return homeUrl;
+    }
+
+    /**
+     * 设置客户端首页地址。
+     * @param homeUrl 客户端首页地址
+     */
+    public void setHomeUrl(String homeUrl) {
+        this.homeUrl = homeUrl;
     }
 
     /**

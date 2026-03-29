@@ -137,6 +137,9 @@ curl http://localhost:9000/health
 - 示例回调地址：
   - `test-client-1`：`http://localhost:8080/callback`、`http://localhost:8080/auth/callback`
   - `test-client-2`：`http://localhost:3000/callback`
+- 客户端首页地址（`home_url`）：
+  - `test-client-1`：`http://localhost:8080`
+  - `test-client-2`：`http://localhost:3000`
 
 ## 6. 给前端 AI 的核心结论
 
@@ -191,6 +194,8 @@ sequenceDiagram
 | 换取令牌 | POST | `/sso/token` |
 | 用户信息 | GET | `/sso/userinfo` |
 | 撤销令牌 | POST | `/sso/revoke` |
+| 已授权客户端列表 | GET | `/sso/authorized-clients` |
+| 撤销客户端授权 | DELETE | `/sso/authorized-clients/{clientId}` |
 | 登出 | POST | `/sso/logout` |
 | 发送重置码 | POST | `/sso/password/reset-code` |
 | 重置密码 | POST | `/sso/password/reset` |
@@ -378,7 +383,53 @@ curl -X POST "http://localhost:9000/sso/revoke" \
 
 响应：`200 OK` 空体（即使 token 不存在也返回 200）。
 
-### 9.8 登出：`POST /sso/logout`
+### 9.8 查询已授权客户端：`GET /sso/authorized-clients`
+
+查询当前登录用户已授权的所有第三方客户端及其权限范围。需要带 Cookie（`SSO_SESSION`）。
+
+```bash
+curl http://localhost:9000/sso/authorized-clients \
+  --cookie "SSO_SESSION=<session-id>"
+```
+
+响应示例：
+
+```json
+[
+  {
+    "client_id": "test-client-1",
+    "scopes": ["openid", "profile", "email"],
+    "authorized_at": 1774800000,
+    "home_url": "http://localhost:8080"
+  },
+  {
+    "client_id": "test-client-2",
+    "scopes": ["openid"],
+    "authorized_at": 1774800500,
+    "home_url": "http://localhost:3000"
+  }
+]
+```
+
+字段说明：
+- `home_url`：客户端首页地址，前端可用于展示跳转入口。若客户端未配置则为 `null`。
+
+未登录时返回 `401 login_required`。
+
+### 9.9 撤销客户端授权：`DELETE /sso/authorized-clients/{clientId}`
+
+撤销当前登录用户对指定客户端的授权，同时删除同意记录及该客户端下所有访问令牌和刷新令牌。需要带 Cookie（`SSO_SESSION`）。
+
+```bash
+curl -X DELETE http://localhost:9000/sso/authorized-clients/test-client-1 \
+  --cookie "SSO_SESSION=<session-id>"
+```
+
+响应：`200 OK` 空体。
+
+撤销后，该客户端再次请求授权时用户需要重新同意。
+
+### 9.10 登出：`POST /sso/logout`
 
 ```bash
 curl -i -X POST http://localhost:9000/sso/logout \
@@ -395,7 +446,7 @@ curl -i -X POST http://localhost:9000/sso/logout \
 
 同时返回清除会话 Cookie 的 `Set-Cookie`。
 
-### 9.9 密码重置接口
+### 9.11 密码重置接口
 
 发送验证码：
 

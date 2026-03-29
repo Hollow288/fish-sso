@@ -9,9 +9,9 @@ INSERT INTO sso_user (id, username, password_hash, display_name, email) VALUES
 
 -- 插入测试客户端
 -- 客户端密钥: secret123 (BCrypt加密后的哈希值)
-INSERT INTO sso_client (client_id, client_secret_hash) VALUES
-('test-client-1', '$2a$10$EFFqocQPlc06ODlZBG9B.OlazGQy03Za0srhThLCFuaKPvPvV//Ke'),
-('test-client-2', '$2a$10$EFFqocQPlc06ODlZBG9B.OlazGQy03Za0srhThLCFuaKPvPvV//Ke');
+INSERT INTO sso_client (client_id, client_secret_hash, home_url) VALUES
+('test-client-1', '$2a$10$EFFqocQPlc06ODlZBG9B.OlazGQy03Za0srhThLCFuaKPvPvV//Ke', 'http://localhost:8080'),
+('test-client-2', '$2a$10$EFFqocQPlc06ODlZBG9B.OlazGQy03Za0srhThLCFuaKPvPvV//Ke', 'http://localhost:3000');
 
 -- 插入客户端回调地址
 INSERT INTO sso_client_redirect_uri (client_id, redirect_uri) VALUES

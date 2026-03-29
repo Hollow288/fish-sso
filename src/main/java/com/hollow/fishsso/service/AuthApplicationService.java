@@ -2,9 +2,11 @@ package com.hollow.fishsso.service;
 
 import com.hollow.fishsso.exception.SsoException;
 import com.hollow.fishsso.model.SessionInfo;
+import com.hollow.fishsso.service.dto.AuthorizedClientView;
 import com.hollow.fishsso.service.dto.LoginResult;
 import com.hollow.fishsso.service.dto.TokenSet;
 import com.hollow.fishsso.service.dto.UserInfoView;
+import java.util.List;
 import java.net.URI;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -107,6 +109,24 @@ public class AuthApplicationService {
      */
     public void revokeToken(String clientId, String clientSecret, String token) {
         ssoService.revokeToken(clientId, clientSecret, token);
+    }
+
+    /**
+     * 查询当前登录用户已授权的所有客户端
+     * @param sessionId 当前会话ID
+     * @return 已授权客户端列表
+     */
+    public List<AuthorizedClientView> listAuthorizedClients(String sessionId) {
+        return ssoService.listAuthorizedClients(sessionId);
+    }
+
+    /**
+     * 撤销当前登录用户对指定客户端的授权
+     * @param sessionId 当前会话ID
+     * @param clientId 待撤销的客户端ID
+     */
+    public void revokeClientAuthorization(String sessionId, String clientId) {
+        ssoService.revokeClientAuthorization(sessionId, clientId);
     }
 
     /**

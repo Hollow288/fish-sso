@@ -1,10 +1,12 @@
 package com.hollow.fishsso.controller;
 
 import com.hollow.fishsso.config.SsoProperties;
+import com.hollow.fishsso.controller.dto.AuthorizedClientResponse;
 import com.hollow.fishsso.controller.dto.LoginRequest;
 import com.hollow.fishsso.controller.dto.LoginResponse;
 import com.hollow.fishsso.controller.dto.TokenResponse;
 import com.hollow.fishsso.controller.dto.UserInfoResponse;
+import com.hollow.fishsso.service.dto.AuthorizedClientView;
 import com.hollow.fishsso.service.AuthApplicationService;
 import com.hollow.fishsso.service.dto.LoginResult;
 import com.hollow.fishsso.service.dto.TokenSet;
@@ -13,13 +15,16 @@ import com.hollow.fishsso.util.CookieUtils;
 import com.hollow.fishsso.util.SsoCookieNames;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -158,6 +163,39 @@ public class AuthController {
                                        @RequestParam("client_id") String clientId,
                                        @RequestParam("client_secret") String clientSecret) {
         authApplicationService.revokeToken(clientId, clientSecret, token);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 查询当前登录用户已授权的所有客户端及权限
+     * @param request HTTP请求对象
+     * @return 已授权客户端列表
+     */
+    @GetMapping("/authorized-clients")
+    public List<AuthorizedClientResponse> listAuthorizedClients(HttpServletRequest request) {
+        String sessionId = currentSessionId(request);
+        List<AuthorizedClientView> clients = authApplicationService.listAuthorizedClients(sessionId);
+        return clients.stream()
+                .map(view -> new AuthorizedClientResponse(
+                        view.clientId(),
+                        view.scopes(),
+                        view.authorizedAt().getEpochSecond(),
+                        view.homeUrl()
+                ))
+                .toList();
+    }
+
+    /**
+     * 撤销当前登录用户对指定客户端的授权（删除同意记录及相关令牌）
+     * @param clientId 待撤销的客户端ID
+     * @param request HTTP请求对象
+     * @return 200空响应
+     */
+    @DeleteMapping("/authorized-clients/{clientId}")
+    public ResponseEntity<Void> revokeClientAuthorization(@PathVariable String clientId,
+                                                          HttpServletRequest request) {
+        String sessionId = currentSessionId(request);
+        authApplicationService.revokeClientAuthorization(sessionId, clientId);
         return ResponseEntity.ok().build();
     }
 

@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.redis.core.TimeToLive;
+import org.springframework.data.redis.core.index.Indexed;
 
 /**
  * 刷新令牌模型
@@ -15,7 +16,9 @@ public class RefreshToken {
 
     @Id
     private String token;
+    @Indexed
     private String clientId;
+    @Indexed
     private String userId;
     private List<String> scopes = new ArrayList<>();
     private Instant expiresAt;
