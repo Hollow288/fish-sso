@@ -16,4 +16,11 @@ public interface RefreshTokenRedisRepository extends CrudRepository<RefreshToken
      * @return 刷新令牌列表
      */
     List<RefreshToken> findByUserIdAndClientId(String userId, String clientId);
+
+    /**
+     * 根据用户ID查询刷新令牌
+     * @param userId 用户ID
+     * @return 刷新令牌列表
+     */
+    List<RefreshToken> findByUserId(String userId);
 }

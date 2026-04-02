@@ -4,6 +4,7 @@ import java.time.Instant;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.redis.core.TimeToLive;
+import org.springframework.data.redis.core.index.Indexed;
 
 /**
  * 会话信息模型
@@ -13,6 +14,7 @@ public class SessionInfo {
 
     @Id
     private String sessionId;
+    @Indexed
     private String userId;
     private Instant expiresAt;
     @TimeToLive

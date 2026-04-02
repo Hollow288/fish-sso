@@ -28,5 +28,11 @@ public interface SessionStore {
      * @param sessionId 会话ID
      */
     void delete(String sessionId);
+
+    /**
+     * 删除用户的所有会话
+     * @param userId 用户ID
+     */
+    void deleteByUserId(String userId);
 }
 

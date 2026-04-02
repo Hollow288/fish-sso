@@ -4,6 +4,9 @@ import com.hollow.fishsso.config.SsoProperties;
 import com.hollow.fishsso.exception.SsoException;
 import com.hollow.fishsso.model.PasswordResetCode;
 import com.hollow.fishsso.model.UserAccount;
+import com.hollow.fishsso.repository.RefreshTokenStore;
+import com.hollow.fishsso.repository.SessionStore;
+import com.hollow.fishsso.repository.TokenStore;
 import com.hollow.fishsso.repository.UserRepository;
 import com.hollow.fishsso.repository.redis.PasswordResetCodeRedisRepository;
 import java.security.SecureRandom;
@@ -26,6 +29,9 @@ public class PasswordResetService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
+    private final SessionStore sessionStore;
+    private final TokenStore tokenStore;
+    private final RefreshTokenStore refreshTokenStore;
     private final PasswordResetCodeRedisRepository resetCodeRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
@@ -40,11 +46,17 @@ public class PasswordResetService {
      * @param properties SSO配置属性
      */
     public PasswordResetService(UserRepository userRepository,
+                                SessionStore sessionStore,
+                                TokenStore tokenStore,
+                                RefreshTokenStore refreshTokenStore,
                                 PasswordResetCodeRedisRepository resetCodeRepository,
                                 EmailService emailService,
                                 PasswordEncoder passwordEncoder,
                                 SsoProperties properties) {
         this.userRepository = userRepository;
+        this.sessionStore = sessionStore;
+        this.tokenStore = tokenStore;
+        this.refreshTokenStore = refreshTokenStore;
         this.resetCodeRepository = resetCodeRepository;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
@@ -136,6 +148,7 @@ public class PasswordResetService {
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+        invalidateUserCredentials(user.getId());
 
         // 删除已使用的验证码
         resetCodeRepository.deleteById(username);
@@ -161,5 +174,15 @@ public class PasswordResetService {
             config = new SsoProperties.PasswordReset();
         }
         return config;
+    }
+
+    /**
+     * 密码重置后立即失效用户现有登录态与令牌。
+     * @param userId 用户ID
+     */
+    private void invalidateUserCredentials(String userId) {
+        sessionStore.deleteByUserId(userId);
+        tokenStore.deleteByUserId(userId);
+        refreshTokenStore.deleteByUserId(userId);
     }
 }

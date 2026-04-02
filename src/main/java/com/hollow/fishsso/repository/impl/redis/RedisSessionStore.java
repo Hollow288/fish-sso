@@ -5,6 +5,7 @@ import com.hollow.fishsso.repository.redis.SessionRedisRepository;
 import com.hollow.fishsso.repository.SessionStore;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
@@ -58,5 +59,17 @@ public class RedisSessionStore implements SessionStore {
     @Override
     public void delete(String sessionId) {
         repository.deleteById(sessionId);
+    }
+
+    /**
+     * 删除用户的所有会话
+     * @param userId 用户 ID
+     */
+    @Override
+    public void deleteByUserId(String userId) {
+        List<SessionInfo> sessions = repository.findByUserId(userId);
+        if (!sessions.isEmpty()) {
+            repository.deleteAll(sessions);
+        }
     }
 }

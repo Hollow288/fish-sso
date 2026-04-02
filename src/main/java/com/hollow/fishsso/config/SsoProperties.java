@@ -1,6 +1,8 @@
 package com.hollow.fishsso.config;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import jakarta.annotation.PostConstruct;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -21,8 +23,10 @@ public class SsoProperties {
     private Duration idTokenTtl;
     private Duration refreshTokenTtl;
     private Jwt jwt = new Jwt();
+    private Cookie cookie = new Cookie();
     private LoginProtection loginProtection;
     private PasswordReset passwordReset;
+    private List<String> allowedReturnToPrefixes = new ArrayList<>(List.of("/consent"));
 
     /**
      * 校验必须配置项。
@@ -38,6 +42,12 @@ public class SsoProperties {
         Assert.notNull(jwt, "Missing required property group: app.sso.jwt");
         Assert.isTrue(StringUtils.hasText(jwt.getKeyStorePath()),
                 "Missing required property: app.sso.jwt.key-store-path");
+        Assert.notNull(cookie, "Missing required property group: app.sso.cookie");
+        Assert.isTrue(StringUtils.hasText(cookie.getSameSite()),
+                "Missing required property: app.sso.cookie.same-site");
+        Assert.notEmpty(allowedReturnToPrefixes,
+                "Missing required property: app.sso.allowed-return-to-prefixes");
+        allowedReturnToPrefixes.forEach(this::validateReturnToPrefix);
         if (jwt.getRotationPeriod() != null) {
             Assert.isTrue(!jwt.getRotationPeriod().isNegative() && !jwt.getRotationPeriod().isZero(),
                     "Property must be > 0: app.sso.jwt.rotation-period");
@@ -66,6 +76,18 @@ public class SsoProperties {
         Assert.notNull(rule.getBlockDuration(), "Missing required property: " + path + ".block-duration");
         Assert.isTrue(!rule.getBlockDuration().isNegative() && !rule.getBlockDuration().isZero(),
                 "Property must be > 0: " + path + ".block-duration");
+    }
+
+    /**
+     * 校验允许回跳的路径前缀。
+     * @param prefix 路径前缀
+     */
+    private void validateReturnToPrefix(String prefix) {
+        Assert.isTrue(StringUtils.hasText(prefix), "return_to prefix must not be blank");
+        Assert.isTrue(prefix.startsWith("/") && !prefix.startsWith("//"),
+                "return_to prefix must start with a single '/': " + prefix);
+        Assert.isTrue(!prefix.contains("\\") && !prefix.contains("\r") && !prefix.contains("\n"),
+                "return_to prefix contains illegal characters: " + prefix);
     }
 
     /**
@@ -181,6 +203,22 @@ public class SsoProperties {
     }
 
     /**
+     * 获取 Cookie 配置。
+     * @return Cookie 配置
+     */
+    public Cookie getCookie() {
+        return cookie;
+    }
+
+    /**
+     * 设置 Cookie 配置。
+     * @param cookie Cookie 配置
+     */
+    public void setCookie(Cookie cookie) {
+        this.cookie = cookie;
+    }
+
+    /**
      * 获取登录防护配置。
      * @return 登录防护配置
      */
@@ -210,6 +248,65 @@ public class SsoProperties {
      */
     public void setPasswordReset(PasswordReset passwordReset) {
         this.passwordReset = passwordReset;
+    }
+
+    /**
+     * 获取允许的 return_to 路径前缀。
+     * @return 路径前缀列表
+     */
+    public List<String> getAllowedReturnToPrefixes() {
+        return allowedReturnToPrefixes;
+    }
+
+    /**
+     * 设置允许的 return_to 路径前缀。
+     * @param allowedReturnToPrefixes 路径前缀列表
+     */
+    public void setAllowedReturnToPrefixes(List<String> allowedReturnToPrefixes) {
+        this.allowedReturnToPrefixes = allowedReturnToPrefixes == null
+                ? new ArrayList<>()
+                : new ArrayList<>(allowedReturnToPrefixes);
+    }
+
+    /**
+     * Cookie 配置。
+     */
+    public static class Cookie {
+
+        private boolean secure = true;
+        private String sameSite = "Lax";
+
+        /**
+         * 获取是否启用 Secure。
+         * @return 是否启用 Secure
+         */
+        public boolean isSecure() {
+            return secure;
+        }
+
+        /**
+         * 设置是否启用 Secure。
+         * @param secure 是否启用 Secure
+         */
+        public void setSecure(boolean secure) {
+            this.secure = secure;
+        }
+
+        /**
+         * 获取 SameSite 策略。
+         * @return SameSite 策略
+         */
+        public String getSameSite() {
+            return sameSite;
+        }
+
+        /**
+         * 设置 SameSite 策略。
+         * @param sameSite SameSite 策略
+         */
+        public void setSameSite(String sameSite) {
+            this.sameSite = sameSite;
+        }
     }
 
     /**

@@ -35,6 +35,12 @@ app:
     access-token-ttl: 30m
     id-token-ttl: 30m
     refresh-token-ttl: 7d
+    cookie:
+      # 生产环境请保持默认 true；仅本地 HTTP 调试时才显式关闭
+      secure: false
+      same-site: Lax
+    allowed-return-to-prefixes:
+      - /consent
     jwt:
       key-store-path: keys/sso-jwt-keys.properties
       rotation-period: 30d

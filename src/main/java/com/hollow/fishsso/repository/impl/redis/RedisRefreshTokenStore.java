@@ -75,4 +75,16 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
             repository.deleteAll(tokens);
         }
     }
+
+    /**
+     * 删除用户的所有刷新令牌
+     * @param userId 用户ID
+     */
+    @Override
+    public void deleteByUserId(String userId) {
+        List<RefreshToken> tokens = repository.findByUserId(userId);
+        if (!tokens.isEmpty()) {
+            repository.deleteAll(tokens);
+        }
+    }
 }

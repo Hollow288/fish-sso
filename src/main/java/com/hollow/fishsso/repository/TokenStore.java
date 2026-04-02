@@ -39,5 +39,11 @@ public interface TokenStore {
      * @param clientId 客户端ID
      */
     void deleteByUserIdAndClientId(String userId, String clientId);
+
+    /**
+     * 删除用户的所有访问令牌
+     * @param userId 用户ID
+     */
+    void deleteByUserId(String userId);
 }
 

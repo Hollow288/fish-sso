@@ -16,4 +16,11 @@ public interface AccessTokenRedisRepository extends CrudRepository<AccessToken, 
      * @return 访问令牌列表
      */
     List<AccessToken> findByUserIdAndClientId(String userId, String clientId);
+
+    /**
+     * 根据用户ID查询访问令牌
+     * @param userId 用户ID
+     * @return 访问令牌列表
+     */
+    List<AccessToken> findByUserId(String userId);
 }
