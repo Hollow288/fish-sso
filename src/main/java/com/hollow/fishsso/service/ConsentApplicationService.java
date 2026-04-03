@@ -3,7 +3,6 @@ package com.hollow.fishsso.service;
 import com.hollow.fishsso.model.AuthCode;
 import com.hollow.fishsso.service.dto.AuthorizationContext;
 import com.hollow.fishsso.service.dto.ConsentContextView;
-import com.hollow.fishsso.service.dto.LoginRequiredResult;
 import com.hollow.fishsso.service.dto.RedirectTarget;
 import java.net.URI;
 import org.springframework.stereotype.Service;
@@ -80,25 +79,6 @@ public class ConsentApplicationService {
 
         ssoService.buildConsentContext(clientId, redirectUri, scope, sessionId);
         return new RedirectTarget(buildErrorRedirect(redirectUri, "access_denied", "用户拒绝授权", state).toString());
-    }
-
-    /**
-     * 构建需要登录的结果
-     * @param requestUri 请求 URI
-     * @param queryString 查询字符串
-     * @return 需要登录的结果
-     */
-    public LoginRequiredResult buildLoginRequired(String requestUri, String queryString) {
-        String currentUrl = requestUri;
-        if (StringUtils.hasText(queryString)) {
-            currentUrl = currentUrl + "?" + queryString;
-        }
-        String loginUrl = UriComponentsBuilder.fromPath("/login")
-                .queryParam("return_to", currentUrl)
-                .build()
-                .encode()
-                .toUriString();
-        return new LoginRequiredResult(loginUrl);
     }
 
     /**

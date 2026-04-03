@@ -31,24 +31,49 @@
 ```text
 fish-sso
 ├─ db
-│  ├─ schema.sql                # 业务表
-│  ├─ login_block_event.sql     # 登录封禁事件表
-│  └─ data.sql                  # 测试数据
+│  ├─ schema.sql                    # 业务表
+│  ├─ login_block_event.sql         # 登录封禁事件表
+│  └─ data.sql                      # 测试数据
 ├─ docs
-│  └─ password-reset-api.md     # 密码重置接口文档
+│  └─ password-reset-api.md         # 密码重置接口文档
 ├─ keys
-│  └─ sso-jwt-keys.properties   # JWT 密钥持久化文件
+│  └─ sso-jwt-keys.properties       # JWT 密钥持久化文件（已 gitignore）
 ├─ src/main/java/com/hollow/fishsso
-│  ├─ config
-│  ├─ controller
-│  ├─ service
-│  ├─ repository
-│  ├─ model
-│  ├─ exception
-│  └─ util
+│  ├─ config/
+│  │  ├─ SecurityConfig             # Spring Security 配置
+│  │  └─ SsoProperties              # app.sso.* 配置属性绑定
+│  ├─ controller/
+│  │  ├─ AuthController             # 登录、令牌、用户信息、登出
+│  │  ├─ ConsentController          # 授权同意页
+│  │  ├─ HealthController           # 健康检查
+│  │  ├─ OidcDiscoveryController    # OIDC Discovery / JWKS
+│  │  ├─ PasswordController         # 密码重置
+│  │  ├─ dto/                       # HTTP 请求/响应 DTO
+│  │  └─ support/                   # 控制器辅助（Cookie 工厂、请求上下文、returnTo 校验）
+│  ├─ exception/
+│  │  ├─ SsoException               # 自定义业务异常
+│  │  ├─ SsoExceptionHandler        # 全局异常处理
+│  │  └─ ConsentExceptionHandler    # 同意页专用异常处理（未登录时重定向）
+│  ├─ model/                        # 领域模型（JPA 实体 + Redis Hash）
+│  ├─ repository/
+│  │  ├─ *Store / *Repository       # 存储层抽象接口
+│  │  ├─ impl/jpa/                  # JPA 适配器实现
+│  │  ├─ impl/redis/                # Redis 存储实现
+│  │  ├─ jpa/                       # Spring Data JPA 接口
+│  │  └─ redis/                     # Spring Data Redis 接口
+│  ├─ service/
+│  │  ├─ SsoService                 # 核心 SSO 业务逻辑
+│  │  ├─ AuthApplicationService     # 认证应用服务（编排层）
+│  │  ├─ ConsentApplicationService  # 同意应用服务（编排层）
+│  │  ├─ JwtService                 # JWT 签发/验签、密钥管理
+│  │  ├─ EmailService               # 邮件发送
+│  │  ├─ LoginProtectionService     # 登录防护/限流
+│  │  ├─ PasswordResetService       # 密码重置流程
+│  │  └─ dto/                       # 服务层内部 DTO
+│  └─ util/                         # 工具类（Cookie 工具、常量）
 ├─ src/main/resources
-│  ├─ application.yml
-│  └─ application.yml.example
+│  ├─ application.yml               # 本地配置（已 gitignore，勿提交）
+│  └─ application.yml.example       # 配置样例
 └─ pom.xml
 ```
 
