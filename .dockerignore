@@ -1,0 +1,9 @@
+.git
+.github
+.idea
+.claude
+config
+keys
+target/*
+!target/fish-sso-0.0.1-SNAPSHOT.jar
+tmp-utf8-*

@@ -34,6 +34,8 @@ fish-sso
 │  ├─ schema.sql                    # 业务表
 │  ├─ login_block_event.sql         # 登录封禁事件表
 │  └─ data.sql                      # 测试数据
+├─ config/
+│  └─ application.yml               # 可选的本地私有配置（已 gitignore）
 ├─ docs
 │  └─ password-reset-api.md         # 密码重置接口文档
 ├─ keys
@@ -72,8 +74,8 @@ fish-sso
 │  │  └─ dto/                       # 服务层内部 DTO
 │  └─ util/                         # 工具类（Cookie 工具、常量）
 ├─ src/main/resources
-│  ├─ application.yml               # 本地配置（已 gitignore，勿提交）
-│  └─ application.yml.example       # 配置样例
+│  ├─ application.yml               # 可提交的环境变量配置
+│  └─ application.yml.example       # 同步的配置样例
 └─ pom.xml
 ```
 
@@ -104,17 +106,9 @@ mysql -u <user> -p fish_sso < db/data.sql
 
 ### 4.3 配置文件
 
-推荐从样例复制：
+`src/main/resources/application.yml` 已使用环境变量占位符，可以直接提交。至少设置 `MYSQL_URL`、`MYSQL_USERNAME`、`MYSQL_PASSWORD`；部署时设置 `REDIS_HOST`、`SSO_ISSUER`，并按需设置 `MAIL_*`。`SSO_ISSUER` 应为浏览器访问 SSO 的公开地址，例如与 React 页面共用的 `https://sso.example.com`。
 
-Linux/macOS:
-```bash
-cp src/main/resources/application.yml.example src/main/resources/application.yml
-```
-
-Windows PowerShell:
-```powershell
-Copy-Item src/main/resources/application.yml.example src/main/resources/application.yml
-```
+本地私有配置可以放在 Git 忽略的 `config/application.yml`。从项目根目录启动时，Spring Boot 会优先读取这个外部配置。不要把数据库和邮箱密码提交到仓库。
 
 关键配置项：
 - `server.port`：默认 `9000`
@@ -700,7 +694,7 @@ curl http://localhost:9000/sso/jwks
 
 - 不要把 `client_secret` 放到浏览器端代码。
 - 不要把真实数据库、Redis、邮箱密码提交到仓库。
-- 当前 `SSO_SESSION` Cookie 的 `secure` 为 `false`（开发友好）；生产建议改为 `true` 并全站 HTTPS。
+- `SSO_SESSION` Cookie 默认启用 `secure`；仅本地 HTTP 联调时设置 `SSO_COOKIE_SECURE=false`。
 - 当前项目未配置 CORS；跨域前端部署时需反向代理同源或补充后端 CORS 配置。
 - `state` / `nonce` 建议始终由前端生成并校验，避免 CSRF/重放风险。
 
@@ -720,4 +714,10 @@ http://localhost:9000/sso/authorize?client_id=test-client-1&redirect_uri=http://
 ---
 
 如果你要让另一个 AI 直接“按文档产出前端”，建议把本 README 的第 6～10 节和第 12 节作为主输入。
+
+## 15. Docker Hub 镜像
+
+推送到 `master` 或手动运行 GitHub Actions 的 `deploy.yml`，会用 JDK 21 打包，并推送 `hollow288/fish-sso:latest`。仓库需要配置 `DOCKER_USERNAME` 和 `DOCKER_PASSWORD` 两个 GitHub Secrets。
+
+GitHub Actions 从仓库文件打包，镜像内只有使用环境变量的默认配置，没有本地私有配置和 JWT 私钥。运行时提供数据库、Redis、邮箱和 `SSO_ISSUER` 等环境变量，或把私有配置挂载到 `/app/config/application.yml`。把持久化密钥目录挂载到 `/app/keys`；`SSO_JWT_KEY_STORE_PATH` 默认是 `keys/sso-jwt-keys.properties`。容器默认监听 9000。
 
