@@ -511,6 +511,7 @@ public class SsoService {
         List<String> requested = Arrays.stream(scope.split(" "))
                 .map(String::trim)
                 .filter(StringUtils::hasText)
+                .distinct()
                 .collect(Collectors.toList());
         for (String item : requested) {
             String normalized = item.toLowerCase(Locale.ROOT);
