@@ -1,6 +1,7 @@
 package com.hollow.fishsso.controller;
 
 import com.hollow.fishsso.controller.dto.AuthorizedClientResponse;
+import com.hollow.fishsso.controller.dto.ChangePasswordRequest;
 import com.hollow.fishsso.controller.dto.LoginRequest;
 import com.hollow.fishsso.controller.dto.LoginResponse;
 import com.hollow.fishsso.controller.dto.TokenResponse;
@@ -196,6 +197,24 @@ public class AuthController {
                         view.homeUrl()
                 ))
                 .toList();
+    }
+
+    /** 获取当前登录账号资料。 */
+    @GetMapping("/me")
+    public UserInfoResponse currentUser(HttpServletRequest request) {
+        UserInfoView user = authApplicationService.currentUser(requestContextResolver.resolveSessionId(request));
+        return new UserInfoResponse(user.sub(), user.username(), user.name(), user.email());
+    }
+
+    /** 修改当前账号密码。成功后清除所有登录会话及令牌。 */
+    @PostMapping("/password/change")
+    public ResponseEntity<Map<String, String>> changePassword(@RequestBody ChangePasswordRequest body,
+                                                               HttpServletRequest request) {
+        authApplicationService.changePassword(
+                requestContextResolver.resolveSessionId(request), body.currentPassword(), body.newPassword());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, sessionCookieFactory.clearSessionCookie().toString())
+                .body(Map.of("message", "密码已修改，请重新登录"));
     }
 
     /**

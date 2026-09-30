@@ -13,7 +13,7 @@
   - 登录页（提交 `/sso/login`）
   - 授权同意页（调用 `/consent` GET + POST）
   - OAuth 回调页（处理 `code` / `state`）
-  - 用户中心页（调用 `/sso/userinfo`）
+- 用户中心页（通过会话 Cookie 调用 `/sso/me` 和 `/sso/authorized-clients`）
   - 忘记密码页（调用 `/sso/password/reset-code` 和 `/sso/password/reset`）
 
 ## 2. 技术栈
@@ -213,12 +213,16 @@ sequenceDiagram
 | 提交同意 | POST | `/consent` |
 | 换取令牌 | POST | `/sso/token` |
 | 用户信息 | GET | `/sso/userinfo` |
+| 当前登录账号 | GET | `/sso/me` |
+| 修改当前账号密码 | POST | `/sso/password/change` |
 | 撤销令牌 | POST | `/sso/revoke` |
 | 已授权客户端列表 | GET | `/sso/authorized-clients` |
 | 撤销客户端授权 | DELETE | `/sso/authorized-clients/{clientId}` |
 | 登出 | POST | `/sso/logout` |
 | 发送重置码 | POST | `/sso/password/reset-code` |
 | 重置密码 | POST | `/sso/password/reset` |
+
+`GET /sso/me` 使用 `SSO_SESSION` Cookie，返回 `sub`、`username`、`name` 和 `email`。`POST /sso/password/change` 同样使用该 Cookie，请求体为 `{"current_password":"旧密码","new_password":"新密码"}`；成功后清除该账号的所有会话与令牌，并清除当前会话 Cookie，用户需要重新登录。
 
 ## 9. 关键接口契约与示例
 

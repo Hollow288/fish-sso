@@ -350,6 +350,35 @@ public class SsoService {
                 .toList();
     }
 
+    /** 当前登录账号的信息，仅通过会话 Cookie 访问。 */
+    public UserInfoView currentUser(String sessionId) {
+        SessionInfo session = requireSession(sessionId);
+        UserAccount user = userRepository.findById(session.getUserId())
+                .orElseThrow(() -> new SsoException(HttpStatus.UNAUTHORIZED, "login_required", "用户不存在"));
+        return new UserInfoView(user.getId(), user.getUsername(), user.getDisplayName(), user.getEmail());
+    }
+
+    /** 校验当前密码后修改密码，并使该账号的所有会话和令牌失效。 */
+    public void changePassword(String sessionId, String currentPassword, String newPassword) {
+        SessionInfo session = requireSession(sessionId);
+        if (!StringUtils.hasText(currentPassword) || !StringUtils.hasText(newPassword)) {
+            throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_request", "当前密码和新密码不能为空");
+        }
+        UserAccount user = userRepository.findById(session.getUserId())
+                .orElseThrow(() -> new SsoException(HttpStatus.UNAUTHORIZED, "login_required", "用户不存在"));
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_current_password", "当前密码不正确");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_request", "新密码不能与当前密码相同");
+        }
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        sessionStore.deleteByUserId(user.getId());
+        tokenStore.deleteByUserId(user.getId());
+        refreshTokenStore.deleteByUserId(user.getId());
+    }
+
     /**
      * 撤销当前登录用户对指定客户端的授权（删除同意记录及相关令牌）
      * @param sessionId 当前会话ID

@@ -124,6 +124,16 @@ public class AuthApplicationService {
         return ssoService.listAuthorizedClients(sessionId);
     }
 
+    /** 获取当前会话所属账号的信息。 */
+    public UserInfoView currentUser(String sessionId) {
+        return ssoService.currentUser(sessionId);
+    }
+
+    /** 修改当前账号密码。 */
+    public void changePassword(String sessionId, String currentPassword, String newPassword) {
+        ssoService.changePassword(sessionId, currentPassword, newPassword);
+    }
+
     /**
      * 撤销当前登录用户对指定客户端的授权
      * @param sessionId 当前会话ID
