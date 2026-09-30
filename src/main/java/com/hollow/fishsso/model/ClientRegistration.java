@@ -26,6 +26,9 @@ public class ClientRegistration {
     @Column(name = "client_secret_hash", nullable = false, length = 255)
     private String clientSecretHash;
 
+    @Column(name = "require_pkce", nullable = false)
+    private boolean requirePkce = true;
+
     @Column(name = "home_url", length = 512)
     private String homeUrl;
 
@@ -98,6 +101,14 @@ public class ClientRegistration {
      */
     public String getClientSecretHash() {
         return clientSecretHash;
+    }
+
+    public boolean isRequirePkce() {
+        return requirePkce;
+    }
+
+    public void setRequirePkce(boolean requirePkce) {
+        this.requirePkce = requirePkce;
     }
 
     /**

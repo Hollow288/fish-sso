@@ -37,10 +37,11 @@ public class RedisAuthCodeStore implements AuthCodeStore {
      * @return 创建后的对象
      */
     @Override
-    public AuthCode create(String clientId, String userId, String redirectUri, List<String> scopes, String nonce, Duration ttl) {
+    public AuthCode create(String clientId, String userId, String redirectUri, List<String> scopes,
+                           String nonce, String codeChallenge, Duration ttl) {
         String code = UUID.randomUUID().toString();
         Instant expiresAt = Instant.now().plus(ttl);
-        AuthCode authCode = new AuthCode(code, clientId, userId, redirectUri, scopes, nonce, expiresAt);
+        AuthCode authCode = new AuthCode(code, clientId, userId, redirectUri, scopes, nonce, codeChallenge, expiresAt);
         authCode.setTtlSeconds(ttl.getSeconds());
         repository.save(authCode);
         return authCode;

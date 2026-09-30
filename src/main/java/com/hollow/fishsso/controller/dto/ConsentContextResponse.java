@@ -20,5 +20,7 @@ public record ConsentContextResponse(String clientId,
                                      String displayName,
                                      String state,
                                      String nonce,
-                                     String scope) {
+                                     String scope,
+                                     String codeChallenge,
+                                     String codeChallengeMethod) {
 }

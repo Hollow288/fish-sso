@@ -17,6 +17,8 @@ public record ConsentRequest(
         String scope,
         String state,
         String nonce,
+        @JsonProperty("code_challenge") String codeChallenge,
+        @JsonProperty("code_challenge_method") String codeChallengeMethod,
         String action
 ) {
 }

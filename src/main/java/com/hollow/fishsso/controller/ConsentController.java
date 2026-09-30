@@ -50,9 +50,12 @@ public class ConsentController {
                                                  @RequestParam(value = "scope", required = false) String scope,
                                                  @RequestParam(value = "state", required = false) String state,
                                                  @RequestParam(value = "nonce", required = false) String nonce,
+                                                 @RequestParam(value = "code_challenge", required = false) String codeChallenge,
+                                                 @RequestParam(value = "code_challenge_method", required = false) String codeChallengeMethod,
                                                  HttpServletRequest request) {
         ConsentContextView context = consentApplicationService.getConsentContext(
-                clientId, redirectUri, scope, state, nonce, requestContextResolver.resolveSessionId(request)
+                clientId, redirectUri, scope, state, nonce, codeChallenge, codeChallengeMethod,
+                requestContextResolver.resolveSessionId(request)
         );
         return new ConsentContextResponse(
                 context.clientId(),
@@ -62,7 +65,9 @@ public class ConsentController {
                 context.displayName(),
                 context.state(),
                 context.nonce(),
-                context.scope()
+                context.scope(),
+                context.codeChallenge(),
+                context.codeChallengeMethod()
         );
     }
 
@@ -81,6 +86,8 @@ public class ConsentController {
                 consentRequest.scope(),
                 consentRequest.state(),
                 consentRequest.nonce(),
+                consentRequest.codeChallenge(),
+                consentRequest.codeChallengeMethod(),
                 consentRequest.action(),
                 requestContextResolver.resolveSessionId(request)
         );

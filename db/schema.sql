@@ -13,6 +13,7 @@ CREATE TABLE sso_user (
 CREATE TABLE sso_client (
     client_id VARCHAR(128) PRIMARY KEY COMMENT '客户端ID',
     client_secret_hash VARCHAR(255) NOT NULL COMMENT '客户端密钥哈希值',
+    require_pkce BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否强制使用 PKCE S256',
     home_url VARCHAR(512) COMMENT '客户端首页地址'
 ) COMMENT='客户端注册表';
 

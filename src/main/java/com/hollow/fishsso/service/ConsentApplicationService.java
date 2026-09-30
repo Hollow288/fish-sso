@@ -40,8 +40,11 @@ public class ConsentApplicationService {
                                                 String scope,
                                                 String state,
                                                 String nonce,
+                                                String codeChallenge,
+                                                String codeChallengeMethod,
                                                 String sessionId) {
-        AuthorizationContext context = ssoService.buildConsentContext(clientId, redirectUri, scope, sessionId);
+        AuthorizationContext context = ssoService.buildConsentContext(clientId, redirectUri, scope,
+                codeChallenge, codeChallengeMethod, sessionId);
         return new ConsentContextView(
                 context.clientId(),
                 context.redirectUri(),
@@ -50,7 +53,9 @@ public class ConsentApplicationService {
                 context.displayName(),
                 state,
                 nonce,
-                scope
+                scope,
+                codeChallenge,
+                codeChallengeMethod
         );
     }
 
@@ -70,14 +75,17 @@ public class ConsentApplicationService {
                                         String scope,
                                         String state,
                                         String nonce,
+                                        String codeChallenge,
+                                        String codeChallengeMethod,
                                         String action,
                                         String sessionId) {
         if ("approve".equalsIgnoreCase(action)) {
-            AuthCode authCode = ssoService.approveAuthorization(clientId, redirectUri, scope, nonce, sessionId);
+            AuthCode authCode = ssoService.approveAuthorization(clientId, redirectUri, scope, nonce,
+                    codeChallenge, codeChallengeMethod, sessionId);
             return new RedirectTarget(buildCodeRedirect(redirectUri, authCode.getCode(), state).toString());
         }
 
-        ssoService.buildConsentContext(clientId, redirectUri, scope, sessionId);
+        ssoService.buildConsentContext(clientId, redirectUri, scope, codeChallenge, codeChallengeMethod, sessionId);
         return new RedirectTarget(buildErrorRedirect(redirectUri, "access_denied", "用户拒绝授权", state).toString());
     }
 

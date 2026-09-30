@@ -20,6 +20,7 @@ public class AuthCode {
     private String redirectUri;
     private List<String> scopes = new ArrayList<>();
     private String nonce;
+    private String codeChallenge;
     private Instant expiresAt;
     @TimeToLive
     private Long ttlSeconds;
@@ -40,13 +41,15 @@ public class AuthCode {
      * @param nonce OIDC nonce 参数
      * @param expiresAt 过期时间
      */
-    public AuthCode(String code, String clientId, String userId, String redirectUri, List<String> scopes, String nonce, Instant expiresAt) {
+    public AuthCode(String code, String clientId, String userId, String redirectUri, List<String> scopes,
+                    String nonce, String codeChallenge, Instant expiresAt) {
         this.code = code;
         this.clientId = clientId;
         this.userId = userId;
         this.redirectUri = redirectUri;
         this.scopes = scopes == null ? new ArrayList<>() : new ArrayList<>(scopes);
         this.nonce = nonce;
+        this.codeChallenge = codeChallenge;
         this.expiresAt = expiresAt;
     }
 
@@ -136,6 +139,14 @@ public class AuthCode {
      */
     public String getNonce() {
         return nonce;
+    }
+
+    public String getCodeChallenge() {
+        return codeChallenge;
+    }
+
+    public void setCodeChallenge(String codeChallenge) {
+        this.codeChallenge = codeChallenge;
     }
 
     /**

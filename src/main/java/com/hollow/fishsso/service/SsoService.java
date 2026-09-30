@@ -120,10 +120,12 @@ public class SsoService {
      * @param scope 授权范围
      * @throws SsoException 参数无效时抛出
      */
-    public void validateAuthorizationRequest(String clientId, String redirectUri, String scope) {
+    public void validateAuthorizationRequest(String clientId, String redirectUri, String scope,
+                                             String codeChallenge, String codeChallengeMethod) {
         ClientRegistration client = requireClient(clientId);
         validateRedirectUri(client, redirectUri);
         resolveScopes(scope, client);
+        PkceSupport.validateAuthorization(codeChallenge, codeChallengeMethod, client.isRequirePkce());
     }
 
     /**
@@ -135,10 +137,12 @@ public class SsoService {
      * @return 授权上下文
      * @throws SsoException 客户端未注册或未登录时抛出
      */
-    public AuthorizationContext buildConsentContext(String clientId, String redirectUri, String scope, String sessionId) {
+    public AuthorizationContext buildConsentContext(String clientId, String redirectUri, String scope,
+                                                    String codeChallenge, String codeChallengeMethod, String sessionId) {
         SessionInfo session = requireSession(sessionId);
-        ClientRegistration client = clientRepository.findByClientId(clientId)
-                .orElseThrow(() -> new SsoException(HttpStatus.BAD_REQUEST, "invalid_client", "客户端未注册"));
+        ClientRegistration client = requireClient(clientId);
+        validateRedirectUri(client, redirectUri);
+        PkceSupport.validateAuthorization(codeChallenge, codeChallengeMethod, client.isRequirePkce());
         List<String> scopes = resolveScopes(scope, client);
         UserAccount user = userRepository.findById(session.getUserId())
                 .orElseThrow(() -> new SsoException(HttpStatus.UNAUTHORIZED, "login_required", "用户不存在"));
@@ -161,13 +165,16 @@ public class SsoService {
      * @param sessionId 当前会话ID
      * @return 授权码
      */
-    public AuthCode approveAuthorization(String clientId, String redirectUri, String scope, String nonce, String sessionId) {
+    public AuthCode approveAuthorization(String clientId, String redirectUri, String scope, String nonce,
+                                         String codeChallenge, String codeChallengeMethod, String sessionId) {
         ClientRegistration client = requireClient(clientId);
         validateRedirectUri(client, redirectUri);
+        PkceSupport.validateAuthorization(codeChallenge, codeChallengeMethod, client.isRequirePkce());
         SessionInfo session = requireSession(sessionId);
         List<String> scopes = resolveScopes(scope, client);
         recordConsent(session.getUserId(), client.getClientId(), scopes);
-        return authCodeStore.create(client.getClientId(), session.getUserId(), redirectUri, scopes, nonce, properties.getAuthCodeTtl());
+        return authCodeStore.create(client.getClientId(), session.getUserId(), redirectUri, scopes,
+                nonce, codeChallenge, properties.getAuthCodeTtl());
     }
 
     /**
@@ -183,9 +190,12 @@ public class SsoService {
                                                           String redirectUri,
                                                           String scope,
                                                           String nonce,
+                                                          String codeChallenge,
+                                                          String codeChallengeMethod,
                                                           String sessionId) {
         ClientRegistration client = requireClient(clientId);
         validateRedirectUri(client, redirectUri);
+        PkceSupport.validateAuthorization(codeChallenge, codeChallengeMethod, client.isRequirePkce());
         List<String> requestedScopes = resolveScopes(scope, client);
 
         Optional<SessionInfo> sessionOptional = findValidSession(sessionId);
@@ -209,6 +219,7 @@ public class SsoService {
                 redirectUri,
                 requestedScopes,
                 nonce,
+                codeChallenge,
                 properties.getAuthCodeTtl()
         );
         return Optional.of(authCode);
@@ -223,7 +234,8 @@ public class SsoService {
      * @return 令牌集合
      * @throws SsoException 客户端认证失败、授权码无效或过期时抛出
      */
-    public TokenSet exchangeCode(String clientId, String clientSecret, String code, String redirectUri) {
+    public TokenSet exchangeCode(String clientId, String clientSecret, String code, String redirectUri,
+                                 String codeVerifier) {
         ClientRegistration client = requireClient(clientId);
         if (!passwordEncoder.matches(clientSecret, client.getClientSecretHash())) {
             throw new SsoException(HttpStatus.UNAUTHORIZED, "invalid_client", "客户端认证失败");
@@ -239,6 +251,7 @@ public class SsoService {
         if (!authCode.getRedirectUri().equals(redirectUri)) {
             throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_grant", "回调地址不匹配");
         }
+        PkceSupport.verify(authCode.getCodeChallenge(), codeVerifier, client.isRequirePkce());
 
         UserAccount user = userRepository.findById(authCode.getUserId())
                 .orElseThrow(() -> new SsoException(HttpStatus.BAD_REQUEST, "invalid_grant", "用户不存在"));

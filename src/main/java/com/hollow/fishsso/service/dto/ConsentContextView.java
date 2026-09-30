@@ -20,7 +20,9 @@ public record ConsentContextView(String clientId,
                                  String displayName,
                                  String state,
                                  String nonce,
-                                 String scope) {
+                                 String scope,
+                                 String codeChallenge,
+                                 String codeChallengeMethod) {
 
     public ConsentContextView {
         scopes = List.copyOf(scopes);

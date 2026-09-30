@@ -44,6 +44,7 @@ public class OidcDiscoveryController {
                 Map.entry("scopes_supported", List.of("openid", "profile", "email")),
                 Map.entry("response_types_supported", List.of("code")),
                 Map.entry("grant_types_supported", List.of("authorization_code", "refresh_token")),
+                Map.entry("code_challenge_methods_supported", List.of("S256")),
                 Map.entry("subject_types_supported", List.of("public")),
                 Map.entry("id_token_signing_alg_values_supported", List.of("RS256")),
                 Map.entry("token_endpoint_auth_methods_supported", List.of("client_secret_post"))

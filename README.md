@@ -163,6 +163,7 @@ curl http://localhost:9000/health
 ## 6. 给前端 AI 的核心结论
 
 - 这是授权码模式，`/sso/token` 要求 `client_secret`，属于机密客户端流程。
+- 支持 PKCE S256；`sso_client.require_pkce` 控制每个客户端是否强制使用。新客户端默认强制，旧客户端可暂时兼容。
 - 生产环境推荐前端走 BFF（前端后端）或服务端中转调用 `/sso/token`，不要把 `client_secret` 暴露到浏览器。
 - `/sso/login` 成功后会下发 `SSO_SESSION`（`HttpOnly`, `SameSite=Lax`, `Path=/`），前端 JS 读不到该 Cookie。
 - 同意页相关接口 `/consent` 依赖该 Cookie，前端请求时要带凭据（例如 `credentials: "include"`）。
@@ -229,6 +230,7 @@ sequenceDiagram
 - `scope` 可选（空时默认客户端全部允许 scope）
 - `state` 可选（建议始终传）
 - `nonce` 可选（OIDC 建议传）
+- `code_challenge`、`code_challenge_method=S256`：启用 PKCE 时一起传；`require_pkce=true` 的客户端必填。
 
 示例：
 
@@ -342,6 +344,8 @@ curl -X POST "http://localhost:9000/sso/token" \
   -d "client_id=test-client-1" \
   -d "client_secret=secret123"
 ```
+
+使用 PKCE 的客户端还须在上述请求中增加 `code_verifier`，其值是发起授权时生成并保存在客户端服务端的一次性随机串。SSO 对每个授权码保存 `code_challenge`，有 challenge 时始终校验 verifier；缺少 challenge 的旧授权码不能靠补传 verifier 绕过校验。刷新令牌请求不使用 PKCE。
 
 刷新模式：
 
@@ -693,6 +697,7 @@ curl http://localhost:9000/sso/jwks
 ## 13. 安全与生产注意事项
 
 - 不要把 `client_secret` 放到浏览器端代码。
+- 已有数据库先执行 `db/pkce-migration.sql`，再部署 SSO 后端、SSO React 和 Hotta 后端，最后执行 `db/hotta-admin-require-pkce.sql`。前一个脚本保留旧客户端兼容状态并将新客户端默认值改为强制；后一个脚本将 `hotta-admin` 设为强制。全新数据库使用更新后的 `db/schema.sql`。
 - 不要把真实数据库、Redis、邮箱密码提交到仓库。
 - `SSO_SESSION` Cookie 默认启用 `secure`；仅本地 HTTP 联调时设置 `SSO_COOKIE_SECURE=false`。
 - 当前项目未配置 CORS；跨域前端部署时需反向代理同源或补充后端 CORS 配置。

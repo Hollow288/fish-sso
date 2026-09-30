@@ -77,6 +77,8 @@ public class AuthController {
                                           @RequestParam(value = "scope", required = false) String scope,
                                           @RequestParam(value = "state", required = false) String state,
                                           @RequestParam(value = "nonce", required = false) String nonce,
+                                          @RequestParam(value = "code_challenge", required = false) String codeChallenge,
+                                          @RequestParam(value = "code_challenge_method", required = false) String codeChallengeMethod,
                                           HttpServletRequest request) {
         URI location = authApplicationService.buildAuthorizeRedirect(
                 clientId,
@@ -84,6 +86,8 @@ public class AuthController {
                 scope,
                 state,
                 nonce,
+                codeChallenge,
+                codeChallengeMethod,
                 requestContextResolver.resolveSessionId(request)
         );
         return ResponseEntity.status(HttpStatus.FOUND).location(location).build();
@@ -135,9 +139,10 @@ public class AuthController {
                                @RequestParam(value = "redirect_uri", required = false) String redirectUri,
                                @RequestParam("client_id") String clientId,
                                @RequestParam("client_secret") String clientSecret,
-                               @RequestParam(value = "refresh_token", required = false) String refreshToken) {
+                               @RequestParam(value = "refresh_token", required = false) String refreshToken,
+                               @RequestParam(value = "code_verifier", required = false) String codeVerifier) {
         TokenSet tokenSet = authApplicationService.handleTokenRequest(
-                grantType, code, redirectUri, clientId, clientSecret, refreshToken);
+                grantType, code, redirectUri, clientId, clientSecret, refreshToken, codeVerifier);
         return new TokenResponse(
                 tokenSet.accessToken(),
                 tokenSet.tokenType(),

@@ -43,10 +43,13 @@ public class AuthApplicationService {
      * @param sessionId 当前会话ID
      * @return 重定向URI
      */
-    public URI buildAuthorizeRedirect(String clientId, String redirectUri, String scope, String state, String nonce, String sessionId) {
-        return ssoService.tryAutoApproveAuthorization(clientId, redirectUri, scope, nonce, sessionId)
+    public URI buildAuthorizeRedirect(String clientId, String redirectUri, String scope, String state, String nonce,
+                                      String codeChallenge, String codeChallengeMethod, String sessionId) {
+        return ssoService.tryAutoApproveAuthorization(clientId, redirectUri, scope, nonce,
+                        codeChallenge, codeChallengeMethod, sessionId)
                 .map(authCode -> buildCodeRedirect(redirectUri, authCode.getCode(), state))
-                .orElseGet(() -> buildConsentRedirect(clientId, redirectUri, scope, state, nonce));
+                .orElseGet(() -> buildConsentRedirect(clientId, redirectUri, scope, state, nonce,
+                        codeChallenge, codeChallengeMethod));
     }
 
     /**
@@ -77,9 +80,10 @@ public class AuthApplicationService {
                                        String redirectUri,
                                        String clientId,
                                        String clientSecret,
-                                       String refreshToken) {
+                                       String refreshToken,
+                                       String codeVerifier) {
         if (GRANT_AUTHORIZATION_CODE.equals(grantType)) {
-            return ssoService.exchangeCode(clientId, clientSecret, code, redirectUri);
+            return ssoService.exchangeCode(clientId, clientSecret, code, redirectUri, codeVerifier);
         } else if (GRANT_REFRESH_TOKEN.equals(grantType)) {
             if (!StringUtils.hasText(refreshToken)) {
                 throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_request", "缺少 refresh_token 参数");
@@ -146,7 +150,8 @@ public class AuthApplicationService {
      * @param nonce OIDC nonce参数
      * @return 同意页面URI
      */
-    private URI buildConsentRedirect(String clientId, String redirectUri, String scope, String state, String nonce) {
+    private URI buildConsentRedirect(String clientId, String redirectUri, String scope, String state, String nonce,
+                                     String codeChallenge, String codeChallengeMethod) {
         UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/consent")
                 .queryParam("client_id", clientId)
                 .queryParam("redirect_uri", redirectUri);
@@ -158,6 +163,10 @@ public class AuthApplicationService {
         }
         if (StringUtils.hasText(nonce)) {
             builder.queryParam("nonce", nonce);
+        }
+        if (codeChallenge != null) {
+            builder.queryParam("code_challenge", codeChallenge);
+            builder.queryParam("code_challenge_method", codeChallengeMethod);
         }
         return builder.build().encode().toUri();
     }
