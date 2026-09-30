@@ -4,6 +4,7 @@ import com.hollow.fishsso.config.SsoProperties;
 import com.hollow.fishsso.exception.SsoException;
 import com.hollow.fishsso.model.AuthCode;
 import com.hollow.fishsso.model.ClientRegistration;
+import com.hollow.fishsso.model.ClientAccessMode;
 import com.hollow.fishsso.model.ConsentGrant;
 import com.hollow.fishsso.model.AccessToken;
 import com.hollow.fishsso.model.RefreshToken;
@@ -11,6 +12,7 @@ import com.hollow.fishsso.model.SessionInfo;
 import com.hollow.fishsso.model.UserAccount;
 import com.hollow.fishsso.repository.AuthCodeStore;
 import com.hollow.fishsso.repository.ClientRepository;
+import com.hollow.fishsso.repository.ClientAccessRepository;
 import com.hollow.fishsso.repository.ConsentStore;
 import com.hollow.fishsso.repository.RefreshTokenStore;
 import com.hollow.fishsso.repository.SessionStore;
@@ -43,6 +45,7 @@ public class SsoService {
 
     private final UserRepository userRepository;
     private final ClientRepository clientRepository;
+    private final ClientAccessRepository clientAccessRepository;
     private final SessionStore sessionStore;
     private final AuthCodeStore authCodeStore;
     private final TokenStore tokenStore;
@@ -69,6 +72,7 @@ public class SsoService {
      */
     public SsoService(UserRepository userRepository,
                       ClientRepository clientRepository,
+                      ClientAccessRepository clientAccessRepository,
                       SessionStore sessionStore,
                       AuthCodeStore authCodeStore,
                       TokenStore tokenStore,
@@ -80,6 +84,7 @@ public class SsoService {
                       JwtService jwtService) {
         this.userRepository = userRepository;
         this.clientRepository = clientRepository;
+        this.clientAccessRepository = clientAccessRepository;
         this.sessionStore = sessionStore;
         this.authCodeStore = authCodeStore;
         this.tokenStore = tokenStore;
@@ -146,6 +151,7 @@ public class SsoService {
         List<String> scopes = resolveScopes(scope, client);
         UserAccount user = userRepository.findById(session.getUserId())
                 .orElseThrow(() -> new SsoException(HttpStatus.UNAUTHORIZED, "login_required", "用户不存在"));
+        assertClientAccess(client, user.getId());
         return new AuthorizationContext(
                 clientId,
                 redirectUri,
@@ -172,6 +178,7 @@ public class SsoService {
         PkceSupport.validateAuthorization(codeChallenge, codeChallengeMethod, client.isRequirePkce());
         SessionInfo session = requireSession(sessionId);
         List<String> scopes = resolveScopes(scope, client);
+        assertClientAccess(client, session.getUserId());
         recordConsent(session.getUserId(), client.getClientId(), scopes);
         return authCodeStore.create(client.getClientId(), session.getUserId(), redirectUri, scopes,
                 nonce, codeChallenge, properties.getAuthCodeTtl());
@@ -203,6 +210,7 @@ public class SsoService {
             return Optional.empty();
         }
         SessionInfo session = sessionOptional.get();
+        assertClientAccess(client, session.getUserId());
 
         Optional<ConsentGrant> consentOptional = consentStore.find(session.getUserId(), clientId);
         if (consentOptional.isEmpty()) {
@@ -255,6 +263,7 @@ public class SsoService {
 
         UserAccount user = userRepository.findById(authCode.getUserId())
                 .orElseThrow(() -> new SsoException(HttpStatus.BAD_REQUEST, "invalid_grant", "用户不存在"));
+        assertTokenGrantAccess(client, user.getId());
 
         String accessToken = jwtService.generateAccessToken(user.getId(), clientId, authCode.getScopes());
         tokenStore.create(accessToken, clientId, user.getId(), authCode.getScopes(), properties.getAccessTokenTtl());
@@ -291,11 +300,15 @@ public class SsoService {
             throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_grant", "刷新令牌与客户端不匹配");
         }
 
-        // rotation: 删除旧的，创建新的
-        refreshTokenStore.delete(refreshTokenStr);
-
         UserAccount user = userRepository.findById(oldRefresh.getUserId())
                 .orElseThrow(() -> new SsoException(HttpStatus.BAD_REQUEST, "invalid_grant", "用户不存在"));
+        if (!isClientAccessAllowed(client, user.getId())) {
+            refreshTokenStore.delete(refreshTokenStr);
+            throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_grant", "用户未获准访问该客户端");
+        }
+
+        // rotation: 删除旧的，创建新的
+        refreshTokenStore.delete(refreshTokenStr);
 
         String accessToken = jwtService.generateAccessToken(user.getId(), clientId, oldRefresh.getScopes());
         tokenStore.create(accessToken, clientId, user.getId(), oldRefresh.getScopes(), properties.getAccessTokenTtl());
@@ -423,6 +436,10 @@ public class SsoService {
         String userId = claims.getSubject();
         UserAccount user = userRepository.findById(userId)
                 .orElseThrow(() -> new SsoException(HttpStatus.UNAUTHORIZED, "invalid_token", "用户不存在"));
+        ClientRegistration client = requireClient(claims.getAudience().isEmpty() ? null : claims.getAudience().get(0));
+        if (!isClientAccessAllowed(client, userId)) {
+            throw new SsoException(HttpStatus.UNAUTHORIZED, "invalid_token", "用户未获准访问该客户端");
+        }
         boolean hasProfile = scopes.contains("profile");
         boolean hasEmail = scopes.contains("email");
         String username = hasProfile ? user.getUsername() : null;
@@ -440,6 +457,24 @@ public class SsoService {
     private ClientRegistration requireClient(String clientId) {
         return clientRepository.findByClientId(clientId)
                 .orElseThrow(() -> new SsoException(HttpStatus.BAD_REQUEST, "invalid_client", "客户端未注册"));
+    }
+
+    private boolean isClientAccessAllowed(ClientRegistration client, String userId) {
+        return client.getAccessMode() == ClientAccessMode.ALL_USERS
+                || (client.getAccessMode() == ClientAccessMode.ALLOWLIST
+                    && clientAccessRepository.isUserAllowed(client.getClientId(), userId));
+    }
+
+    private void assertClientAccess(ClientRegistration client, String userId) {
+        if (!isClientAccessAllowed(client, userId)) {
+            throw new SsoException(HttpStatus.FORBIDDEN, "access_denied", "用户未获准访问该客户端");
+        }
+    }
+
+    private void assertTokenGrantAccess(ClientRegistration client, String userId) {
+        if (!isClientAccessAllowed(client, userId)) {
+            throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_grant", "用户未获准访问该客户端");
+        }
     }
 
     /**

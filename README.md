@@ -164,6 +164,7 @@ curl http://localhost:9000/health
 
 - 这是授权码模式，`/sso/token` 要求 `client_secret`，属于机密客户端流程。
 - 支持 PKCE S256；`sso_client.require_pkce` 控制每个客户端是否强制使用。新客户端默认强制，旧客户端可暂时兼容。
+- `sso_client.access_mode` 控制用户范围：`ALL_USERS`（默认）或 `ALLOWLIST`。白名单按稳定的 SSO 用户 ID 存在 `sso_client_user_access`；切换模式前先插入允许的用户。现有客户端迁移后保持 `ALL_USERS`。生产库先执行 `db/client-access-migration.sql`。
 - 生产环境推荐前端走 BFF（前端后端）或服务端中转调用 `/sso/token`，不要把 `client_secret` 暴露到浏览器。
 - `/sso/login` 成功后会下发 `SSO_SESSION`（`HttpOnly`, `SameSite=Lax`, `Path=/`），前端 JS 读不到该 Cookie。
 - 同意页相关接口 `/consent` 依赖该 Cookie，前端请求时要带凭据（例如 `credentials: "include"`）。

@@ -4,6 +4,8 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -28,6 +30,10 @@ public class ClientRegistration {
 
     @Column(name = "require_pkce", nullable = false)
     private boolean requirePkce = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "access_mode", nullable = false, length = 16)
+    private ClientAccessMode accessMode = ClientAccessMode.ALL_USERS;
 
     @Column(name = "home_url", length = 512)
     private String homeUrl;
@@ -109,6 +115,14 @@ public class ClientRegistration {
 
     public void setRequirePkce(boolean requirePkce) {
         this.requirePkce = requirePkce;
+    }
+
+    public ClientAccessMode getAccessMode() {
+        return accessMode;
+    }
+
+    public void setAccessMode(ClientAccessMode accessMode) {
+        this.accessMode = accessMode;
     }
 
     /**

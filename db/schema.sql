@@ -14,8 +14,17 @@ CREATE TABLE sso_client (
     client_id VARCHAR(128) PRIMARY KEY COMMENT '客户端ID',
     client_secret_hash VARCHAR(255) NOT NULL COMMENT '客户端密钥哈希值',
     require_pkce BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否强制使用 PKCE S256',
+    access_mode VARCHAR(16) NOT NULL DEFAULT 'ALL_USERS' COMMENT 'ALL_USERS 或 ALLOWLIST',
     home_url VARCHAR(512) COMMENT '客户端首页地址'
 ) COMMENT='客户端注册表';
+
+CREATE TABLE sso_client_user_access (
+    client_id VARCHAR(128) NOT NULL COMMENT '客户端ID',
+    user_id VARCHAR(64) NOT NULL COMMENT 'SSO用户ID',
+    PRIMARY KEY (client_id, user_id),
+    FOREIGN KEY (client_id) REFERENCES sso_client(client_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES sso_user(id) ON DELETE CASCADE
+) COMMENT='客户端用户白名单';
 
 -- 客户端回调地址表
 CREATE TABLE sso_client_redirect_uri (
@@ -54,5 +63,6 @@ CREATE TABLE sso_consent_grant_scope (
 CREATE INDEX idx_user_username ON sso_user(username);
 CREATE INDEX idx_client_redirect_uri ON sso_client_redirect_uri(client_id);
 CREATE INDEX idx_client_scope ON sso_client_scope(client_id);
+CREATE INDEX idx_client_user_access_user ON sso_client_user_access(user_id);
 CREATE INDEX idx_consent_grant_user_client ON sso_consent_grant(user_id, client_id);
 CREATE INDEX idx_consent_grant_scope ON sso_consent_grant_scope(consent_id);
