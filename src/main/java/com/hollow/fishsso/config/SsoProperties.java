@@ -26,7 +26,7 @@ public class SsoProperties {
     private Cookie cookie = new Cookie();
     private LoginProtection loginProtection;
     private PasswordReset passwordReset;
-    private List<String> allowedReturnToPrefixes = new ArrayList<>(List.of("/consent"));
+    private List<String> allowedReturnToPrefixes = new ArrayList<>(List.of("/consent", "/sso/authorize"));
 
     /**
      * 校验必须配置项。

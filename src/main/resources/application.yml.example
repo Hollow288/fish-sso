@@ -44,6 +44,7 @@ app:
       same-site: ${SSO_COOKIE_SAME_SITE:Lax}
     allowed-return-to-prefixes:
       - /consent
+      - /sso/authorize
     jwt:
       key-store-path: ${SSO_JWT_KEY_STORE_PATH:keys/sso-jwt-keys.properties}
       rotation-period: ${SSO_JWT_ROTATION_PERIOD:30d}

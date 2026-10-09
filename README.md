@@ -187,14 +187,17 @@ sequenceDiagram
     SSO-->>Browser: 302 Location: /consent?...
     Browser->>SSO: GET /consent?... (带 Cookie)
     alt 未登录
-      SSO-->>Browser: 401 login_required + login_url
-      Browser->>SSO: POST /sso/login
-      SSO-->>Browser: Set-Cookie: SSO_SESSION=...
-      Browser->>SSO: 再次 GET /consent?...
+      SSO-->>Browser: 401 login_required + login_url (return_to=/sso/authorize?...)
+      Browser->>SSO: POST /sso/login (不传 return_to)
+      SSO-->>Browser: 200 + Set-Cookie: SSO_SESSION=...
+      Browser->>SSO: 整页跳转 GET /sso/authorize?...
+      Note over Browser,SSO: 重新检查授权：已授权直接返回业务系统，否则再次进入同意页
     end
-    Browser->>SSO: POST /consent { action: "approve" }
-    SSO-->>Browser: 200 { redirect_url: redirect_uri?code=...&state=... }
-    Browser->>App: 跳转 redirect_url
+    opt 仍需用户确认授权
+      Browser->>SSO: POST /consent { action: "approve" }
+      SSO-->>Browser: 200 { redirect_url: redirect_uri?code=...&state=... }
+      Browser->>App: 跳转 redirect_url
+    end
   end
 
   App->>SSO: POST /sso/token (authorization_code)
@@ -258,8 +261,7 @@ http://localhost:9000/sso/authorize?client_id=test-client-1&redirect_uri=http://
 ```json
 {
   "username": "alice",
-  "password": "password123",
-  "return_to": "/consent?client_id=test-client-1&redirect_uri=http://localhost:8080/callback&scope=openid%20profile&state=abc123"
+  "password": "password123"
 }
 ```
 
@@ -273,6 +275,8 @@ http://localhost:9000/sso/authorize?client_id=test-client-1&redirect_uri=http://
 ```
 - 传 `return_to`：`303 See Other`，并返回 `Location: <return_to>`
 - 两种成功都会下发 `Set-Cookie: SSO_SESSION=...; HttpOnly; SameSite=Lax; Path=/`
+
+React/Axios 登录请求不要提交 `return_to`，应收到 `200` 后由页面整页跳转到登录 URL 中的 `return_to`。授权流程的回跳目标为 `/sso/authorize?...`，登录后重新检查已有授权；避免在 Ajax 请求中跟随 `303` 跳转到业务系统回调地址。后端仍兼容提交 `return_to` 的客户端，默认白名单包含 `/consent` 和 `/sso/authorize`。
 
 常见失败：
 - `401 invalid_credentials`
@@ -302,7 +306,7 @@ http://localhost:9000/sso/authorize?client_id=test-client-1&redirect_uri=http://
 {
   "error": "login_required",
   "error_description": "需要先登录",
-  "login_url": "/login?return_to=%2Fconsent%3Fclient_id%3Dtest-client-1%26redirect_uri%3Dhttp%253A%252F%252Flocalhost%253A8080%252Fcallback%26scope%3Dopenid%2520profile%2520email%26state%3Dabc123"
+  "login_url": "/login?return_to=%2Fsso%2Fauthorize%3Fclient_id%3Dtest-client-1%26redirect_uri%3Dhttp%253A%252F%252Flocalhost%253A8080%252Fcallback%26scope%3Dopenid%2520profile%2520email%26state%3Dabc123"
 }
 ```
 
@@ -545,7 +549,8 @@ async function login(username: string, password: string) {
     throw new Error(err.error_description || "登录失败");
   }
 
-  // 登录成功后，按你的业务路由跳转到 consent 或首页
+  // 登录成功后整页跳转到 return_to（先校验为同源路径），无回跳目标则去首页。
+  // 授权流程的 return_to 应为 /sso/authorize?...，以重新检查已有授权。
   return await res.json();
 }
 ```
@@ -562,9 +567,7 @@ async function loadConsent(search: string) {
   if (res.status === 401) {
     const body = await res.json();
     if (body.error === "login_required") {
-      // 建议跳到你自己的 /login，并把 return_to 带上
-      const returnTo = `/oauth/consent${search}`;
-      window.location.href = `/login?return_to=${encodeURIComponent(returnTo)}`;
+      window.location.href = body.login_url;
       return null;
     }
   }

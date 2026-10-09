@@ -80,6 +80,8 @@ public class ConsentController {
     @PostMapping("/consent")
     public RedirectResponse consentSubmit(@RequestBody ConsentRequest consentRequest,
                                           HttpServletRequest request) {
+        // 会话过期时供异常处理器恢复授权参数，JSON 请求体无法再次读取。
+        request.setAttribute(ConsentRequest.class.getName(), consentRequest);
         RedirectTarget redirectTarget = consentApplicationService.submitConsent(
                 consentRequest.clientId(),
                 consentRequest.redirectUri(),
