@@ -42,6 +42,8 @@ public class OidcDiscoveryController {
                 Map.entry("revocation_endpoint", issuer + "/sso/revoke"),
                 Map.entry("end_session_endpoint", issuer + "/sso/logout"),
                 Map.entry("scopes_supported", List.of("openid", "profile", "email")),
+                Map.entry("claims_supported", List.of("iss", "sub", "aud", "exp", "iat", "auth_time", "nonce",
+                        "preferred_username", "name", "email", "email_verified")),
                 Map.entry("response_types_supported", List.of("code")),
                 Map.entry("grant_types_supported", List.of("authorization_code", "refresh_token")),
                 Map.entry("code_challenge_methods_supported", List.of("S256")),

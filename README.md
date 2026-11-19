@@ -104,6 +104,26 @@ mysql -u <user> -p fish_sso < db/data.sql
 - `db/data.sql` 为演示用测试数据（建议本地联调用）。
 - 生产环境请替换为你自己的用户与客户端数据。
 
+已有数据库升级时，停止旧版后端并备份数据库，然后执行：
+
+```bash
+mysql -u <user> -p fish_sso < db/migrations/20261119_oidc_user_claims.sql
+```
+
+该脚本只适用于含旧列的数据库，执行一次即可；全新数据库直接使用 `db/schema.sql`。必须在启动新版后端前完成迁移，Hibernate 的 `ddl-auto=update` 无法安全识别列重命名。用户 ID、原登录名、显示名和授权关系保留。新版前后端需同步部署；登录、找回密码及用户信息统一使用 `preferred_username`，不提供旧字段别名。升级前已发送的密码重置验证码需重新获取，旧 Redis key 会按原 TTL 自然过期。
+
+用户资料按 OIDC 声明建模：
+
+| 数据库列 | 对外声明 | 含义 |
+|---|---|---|
+| `id` | `sub` | 稳定且不复用的用户标识，业务系统以 `(iss, sub)` 关联账号 |
+| `preferred_username` | `preferred_username` | 本系统内唯一的登录名，不作为跨系统身份主键 |
+| `name` | `name` | 可选的显示名称 |
+| `email` | `email` | 可选的邮箱地址 |
+| `email_verified` | `email_verified` | 邮箱所有权是否已验证，默认 `false` |
+
+OIDC 不规定数据库列名，也不要求登录名唯一；本系统保留唯一约束供账号密码登录使用。新增邮箱或修改邮箱后，验证状态为 `false`；当前没有单独的邮箱验证接口，仅记录验证状态，不能仅凭邮箱非空将其置为 `true`。
+
 ### 4.3 配置文件
 
 `src/main/resources/application.yml` 已使用环境变量占位符，可以直接提交。至少设置 `MYSQL_URL`、`MYSQL_USERNAME`、`MYSQL_PASSWORD`；部署时设置 `REDIS_HOST`、`SSO_ISSUER`，并按需设置 `MAIL_*`。`SSO_ISSUER` 应为浏览器访问 SSO 的公开地址，例如与 React 页面共用的 `https://sso.example.com`。
@@ -226,7 +246,7 @@ sequenceDiagram
 | 发送重置码 | POST | `/sso/password/reset-code` |
 | 重置密码 | POST | `/sso/password/reset` |
 
-`GET /sso/me` 使用 `SSO_SESSION` Cookie，返回 `sub`、`username`、`name` 和 `email`。`POST /sso/password/change` 同样使用该 Cookie，请求体为 `{"current_password":"旧密码","new_password":"新密码"}`；成功后清除该账号的所有会话与令牌，并清除当前会话 Cookie，用户需要重新登录。
+`GET /sso/me` 使用 `SSO_SESSION` Cookie，返回 `sub`、`preferred_username`、`name`、`email` 和 `email_verified`（未设置的可选资料省略）。`POST /sso/password/change` 同样使用该 Cookie，请求体为 `{"current_password":"旧密码","new_password":"新密码"}`；成功后清除该账号的所有会话与令牌，并清除当前会话 Cookie，用户需要重新登录。
 
 ## 9. 关键接口契约与示例
 
@@ -260,7 +280,7 @@ http://localhost:9000/sso/authorize?client_id=test-client-1&redirect_uri=http://
 
 ```json
 {
-  "username": "alice",
+  "preferred_username": "alice",
   "password": "password123"
 }
 ```
@@ -293,8 +313,8 @@ React/Axios 登录请求不要提交 `return_to`，应收到 `200` 后由页面�
   "clientId": "test-client-1",
   "redirectUri": "http://localhost:8080/callback",
   "scopes": ["openid", "profile", "email"],
-  "username": "alice",
-  "displayName": "爱丽丝",
+  "preferred_username": "alice",
+  "name": "爱丽丝",
   "state": "abc123",
   "nonce": "n-0S6_WzA2Mj",
   "scope": "openid profile email"
@@ -393,16 +413,18 @@ curl -H "Authorization: Bearer <access_token>" \
 ```json
 {
   "sub": "user-001",
-  "username": "alice",
+  "preferred_username": "alice",
   "name": "爱丽丝",
-  "email": "alice@example.com"
+  "email": "alice@example.com",
+  "email_verified": false
 }
 ```
 
 说明：
 - `openid` scope 是调用 `/sso/userinfo` 的前置条件。
-- `profile` 不在 scope 时，`username` 和 `name` 可能为 `null`。
-- `email` 不在 scope 时，`email` 可能为 `null`。
+- `profile` 不在 scope 时，省略 `preferred_username` 和 `name`；没有设置显示名时也省略 `name`。
+- `email` 不在 scope 或账号未设置邮箱时，省略 `email` 和 `email_verified`。
+- ID Token 与 UserInfo 使用一致的资料声明；`email_verified` 是布尔值，缺少验证证据时为 `false`。
 
 ### 9.7 撤销令牌：`POST /sso/revoke`
 
@@ -487,7 +509,7 @@ POST /sso/password/reset-code
 Content-Type: application/json
 
 {
-  "username": "alice",
+  "preferred_username": "alice",
   "email": "alice@example.com"
 }
 ```
@@ -499,7 +521,7 @@ POST /sso/password/reset
 Content-Type: application/json
 
 {
-  "username": "alice",
+  "preferred_username": "alice",
   "new_password": "myNewSecurePassword123",
   "code": "582947"
 }
@@ -536,12 +558,12 @@ window.location.href = buildAuthorizeUrl("http://localhost:9000");
 ### 10.3 登录页示例（`/login`）
 
 ```ts
-async function login(username: string, password: string) {
+async function login(preferred_username: string, password: string) {
   const res = await fetch("http://localhost:9000/sso/login", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
+    body: JSON.stringify({ preferred_username, password })
   });
 
   if (!res.ok) {
@@ -662,6 +684,7 @@ curl http://localhost:9000/.well-known/openid-configuration
 - `jwks_uri`
 - `revocation_endpoint`
 - `end_session_endpoint`
+- `claims_supported`
 - `scopes_supported`
 - `grant_types_supported`
 

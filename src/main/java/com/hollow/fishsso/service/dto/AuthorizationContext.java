@@ -8,15 +8,15 @@ import java.util.List;
  * @param redirectUri 重定向URI
  * @param scopes 授权范围列表
  * @param userId 用户ID
- * @param username 用户名
- * @param displayName 显示名称
+ * @param preferredUsername 用户名
+ * @param name 显示名称
  */
 public record AuthorizationContext(String clientId,
                                    String redirectUri,
                                    List<String> scopes,
                                    String userId,
-                                   String username,
-                                   String displayName) {
+                                   String preferredUsername,
+                                   String name) {
 
     public AuthorizationContext {
         scopes = List.copyOf(scopes);

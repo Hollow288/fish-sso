@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -15,20 +16,23 @@ import java.util.UUID;
 public class UserAccount {
 
     @Id
-    @Column(name = "id", length = 64)
+    @Column(name = "id", length = 64, updatable = false)
     private String id;
 
-    @Column(name = "username", nullable = false, unique = true, length = 128)
-    private String username;
+    @Column(name = "preferred_username", nullable = false, unique = true, length = 128)
+    private String preferredUsername;
 
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
-    @Column(name = "display_name", length = 128)
-    private String displayName;
+    @Column(name = "name", length = 128)
+    private String name;
 
     @Column(name = "email", length = 255)
     private String email;
+
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified;
 
     /**
      * 构造函数。
@@ -39,16 +43,16 @@ public class UserAccount {
     /**
      * 构造函数
      * @param id 用户ID
-     * @param username 用户名
+     * @param preferredUsername 用户名
      * @param passwordHash 密码哈希
-     * @param displayName 显示名称
+     * @param name 显示名称
      * @param email 电子邮箱
      */
-    public UserAccount(String id, String username, String passwordHash, String displayName, String email) {
+    public UserAccount(String id, String preferredUsername, String passwordHash, String name, String email) {
         this.id = id;
-        this.username = username;
+        this.preferredUsername = preferredUsername;
         this.passwordHash = passwordHash;
-        this.displayName = displayName;
+        this.name = name;
         this.email = email;
     }
 
@@ -82,16 +86,16 @@ public class UserAccount {
      * 获取用户名。
      * @return 用户名
      */
-    public String getUsername() {
-        return username;
+    public String getPreferredUsername() {
+        return preferredUsername;
     }
 
     /**
      * 设置用户名。
-     * @param username 用户名
+     * @param preferredUsername 用户名
      */
-    public void setUsername(String username) {
-        this.username = username;
+    public void setPreferredUsername(String preferredUsername) {
+        this.preferredUsername = preferredUsername;
     }
 
     /**
@@ -114,16 +118,16 @@ public class UserAccount {
      * 获取显示名称。
      * @return 显示名称
      */
-    public String getDisplayName() {
-        return displayName;
+    public String getName() {
+        return name;
     }
 
     /**
      * 设置显示名称。
-     * @param displayName 显示名称
+     * @param name 显示名称
      */
-    public void setDisplayName(String displayName) {
-        this.displayName = displayName;
+    public void setName(String name) {
+        this.name = name;
     }
 
     /**
@@ -139,6 +143,18 @@ public class UserAccount {
      * @param email 邮箱地址
      */
     public void setEmail(String email) {
+        if (!Objects.equals(this.email, email)) {
+            this.emailVerified = false;
+        }
         this.email = email;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    /** 仅在完成邮箱所有权验证后设置为 true。 */
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified && email != null && !email.isBlank();
     }
 }

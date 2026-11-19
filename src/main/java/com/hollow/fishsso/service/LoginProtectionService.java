@@ -60,12 +60,12 @@ public class LoginProtectionService {
 
     /**
      * 登录前检查是否已被封禁。
-     * @param username 用户名
+     * @param preferredUsername 用户名
      * @param sourceIp 来源 IP
      * @param userAgent 用户代理
      */
-    public void assertLoginAllowed(String username, String sourceIp, String userAgent) {
-        LoginFingerprint fingerprint = fingerprint(username, sourceIp, userAgent);
+    public void assertLoginAllowed(String preferredUsername, String sourceIp, String userAgent) {
+        LoginFingerprint fingerprint = fingerprint(preferredUsername, sourceIp, userAgent);
 
         checkBlocked("account", blockAccountKey(fingerprint.accountKeyPart()), fingerprint);
         checkBlocked("ip", blockIpKey(fingerprint.ipKeyPart()), fingerprint);
@@ -74,13 +74,13 @@ public class LoginProtectionService {
 
     /**
      * 记录登录失败并在达到阈值时触发封禁。
-     * @param username 用户名
+     * @param preferredUsername 用户名
      * @param sourceIp 来源 IP
      * @param userAgent 用户代理
      * @param reason 失败原因
      */
-    public void recordFailure(String username, String sourceIp, String userAgent, String reason) {
-        LoginFingerprint fingerprint = fingerprint(username, sourceIp, userAgent);
+    public void recordFailure(String preferredUsername, String sourceIp, String userAgent, String reason) {
+        LoginFingerprint fingerprint = fingerprint(preferredUsername, sourceIp, userAgent);
 
         SsoProperties.LoginProtection rules = ssoProperties.getLoginProtection();
 
@@ -136,11 +136,11 @@ public class LoginProtectionService {
 
     /**
      * 记录登录成功，清理账号相关失败计数。
-     * @param username 用户名
+     * @param preferredUsername 用户名
      * @param sourceIp 来源 IP
      */
-    public void recordSuccess(String username, String sourceIp) {
-        LoginFingerprint fingerprint = fingerprint(username, sourceIp, null);
+    public void recordSuccess(String preferredUsername, String sourceIp) {
+        LoginFingerprint fingerprint = fingerprint(preferredUsername, sourceIp, null);
         List<String> keysToDelete = new ArrayList<>();
         keysToDelete.add(failAccountKey(fingerprint.accountKeyPart()));
         keysToDelete.add(failAccountIpKey(fingerprint.accountKeyPart(), fingerprint.ipKeyPart()));
@@ -314,13 +314,13 @@ public class LoginProtectionService {
 
     /**
      * 生成用于 Redis 键和日志输出的登录指纹。
-     * @param username 用户名
+     * @param preferredUsername 用户名
      * @param sourceIp 来源 IP
      * @param userAgent 用户代理
      * @return 登录指纹
      */
-    private LoginFingerprint fingerprint(String username, String sourceIp, String userAgent) {
-        String normalizedAccount = normalizeAccount(username);
+    private LoginFingerprint fingerprint(String preferredUsername, String sourceIp, String userAgent) {
+        String normalizedAccount = normalizeAccount(preferredUsername);
         String normalizedIp = normalizeIp(sourceIp);
         return new LoginFingerprint(
                 encodeForRedisKey(normalizedAccount),
@@ -333,14 +333,14 @@ public class LoginProtectionService {
 
     /**
      * 规范化账号标识。
-     * @param username 用户名
+     * @param preferredUsername 用户名
      * @return 规范化后的账号标识
      */
-    private String normalizeAccount(String username) {
-        if (!StringUtils.hasText(username)) {
+    private String normalizeAccount(String preferredUsername) {
+        if (!StringUtils.hasText(preferredUsername)) {
             return EMPTY_ACCOUNT;
         }
-        return username.trim().toLowerCase(Locale.ROOT);
+        return preferredUsername.trim().toLowerCase(Locale.ROOT);
     }
 
     /**

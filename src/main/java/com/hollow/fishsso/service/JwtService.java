@@ -153,14 +153,15 @@ public class JwtService {
         }
 
         if (containsScope(scopes, "profile")) {
-            if (user.getDisplayName() != null) {
-                builder.claim("name", user.getDisplayName());
+            if (user.getName() != null) {
+                builder.claim("name", user.getName());
             }
-            builder.claim("preferred_username", user.getUsername());
+            builder.claim("preferred_username", user.getPreferredUsername());
         }
         if (containsScope(scopes, "email")) {
-            if (user.getEmail() != null) {
+            if (StringUtils.hasText(user.getEmail())) {
                 builder.claim("email", user.getEmail());
+                builder.claim("email_verified", user.isEmailVerified());
             }
         }
 

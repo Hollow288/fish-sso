@@ -65,16 +65,16 @@ public class PasswordResetService {
 
     /**
      * 发送密码重置验证码
-     * @param username 用户名
+     * @param preferredUsername 用户名
      * @param email 邮箱
      */
-    public void sendResetCode(String username, String email) {
-        if (username == null || username.isBlank() || email == null || email.isBlank()) {
+    public void sendResetCode(String preferredUsername, String email) {
+        if (preferredUsername == null || preferredUsername.isBlank() || email == null || email.isBlank()) {
             throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_request", "用户名和邮箱不能为空");
         }
 
         // 检查发送频率
-        Optional<PasswordResetCode> existing = resetCodeRepository.findById(username);
+        Optional<PasswordResetCode> existing = resetCodeRepository.findById(preferredUsername);
         if (existing.isPresent()) {
             Duration sendInterval = getPasswordResetConfig().getSendInterval();
             Instant earliestNextSend = existing.get().getCreatedAt().plus(sendInterval);
@@ -84,9 +84,9 @@ public class PasswordResetService {
         }
 
         // 查找用户并校验邮箱（无论是否匹配都返回相同响应，防止用户枚举）
-        Optional<UserAccount> userOpt = userRepository.findByUsername(username);
+        Optional<UserAccount> userOpt = userRepository.findByPreferredUsername(preferredUsername);
         if (userOpt.isEmpty() || !email.equalsIgnoreCase(userOpt.get().getEmail())) {
-            log.warn("密码重置请求用户名或邮箱不匹配: username={}", username);
+            log.warn("密码重置请求用户名或邮箱不匹配: preferredUsername={}", preferredUsername);
             return;
         }
 
@@ -95,7 +95,7 @@ public class PasswordResetService {
         Duration codeTtl = getPasswordResetConfig().getCodeTtl();
 
         PasswordResetCode resetCode = new PasswordResetCode(
-                username,
+                preferredUsername,
                 code,
                 user.getEmail(),
                 Instant.now(),
@@ -104,29 +104,29 @@ public class PasswordResetService {
         resetCodeRepository.save(resetCode);
 
         emailService.sendResetCode(user.getEmail(), code);
-        log.info("已为用户 {} 发送密码重置验证码", username);
+        log.info("已为用户 {} 发送密码重置验证码", preferredUsername);
     }
 
     /**
      * 重置密码
-     * @param username 用户名
+     * @param preferredUsername 用户名
      * @param newPassword 新密码
      * @param code 验证码
      */
-    public void resetPassword(String username, String newPassword, String code) {
-        if (username == null || username.isBlank()
+    public void resetPassword(String preferredUsername, String newPassword, String code) {
+        if (preferredUsername == null || preferredUsername.isBlank()
                 || newPassword == null || newPassword.isBlank()
                 || code == null || code.isBlank()) {
             throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_request", "用户名、新密码和验证码不能为空");
         }
 
-        PasswordResetCode resetCode = resetCodeRepository.findById(username)
+        PasswordResetCode resetCode = resetCodeRepository.findById(preferredUsername)
                 .orElseThrow(() -> new SsoException(HttpStatus.BAD_REQUEST, "invalid_code", "验证码无效或已过期"));
 
         // 检查失败次数
         int maxFailures = getPasswordResetConfig().getMaxVerifyFailures();
         if (resetCode.getFailureCount() >= maxFailures) {
-            resetCodeRepository.deleteById(username);
+            resetCodeRepository.deleteById(preferredUsername);
             throw new SsoException(HttpStatus.BAD_REQUEST, "code_exhausted", "验证码错误次数过多，请重新获取");
         }
 
@@ -134,7 +134,7 @@ public class PasswordResetService {
         if (!resetCode.getCode().equals(code)) {
             resetCode.setFailureCount(resetCode.getFailureCount() + 1);
             if (resetCode.getFailureCount() >= maxFailures) {
-                resetCodeRepository.deleteById(username);
+                resetCodeRepository.deleteById(preferredUsername);
                 throw new SsoException(HttpStatus.BAD_REQUEST, "code_exhausted", "验证码错误次数过多，请重新获取");
             }
             resetCodeRepository.save(resetCode);
@@ -143,7 +143,7 @@ public class PasswordResetService {
         }
 
         // 验证通过，更新密码
-        UserAccount user = userRepository.findByUsername(username)
+        UserAccount user = userRepository.findByPreferredUsername(preferredUsername)
                 .orElseThrow(() -> new SsoException(HttpStatus.BAD_REQUEST, "invalid_request", "用户不存在"));
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
@@ -151,8 +151,8 @@ public class PasswordResetService {
         invalidateUserCredentials(user.getId());
 
         // 删除已使用的验证码
-        resetCodeRepository.deleteById(username);
-        log.info("用户 {} 密码重置成功", username);
+        resetCodeRepository.deleteById(preferredUsername);
+        log.info("用户 {} 密码重置成功", preferredUsername);
     }
 
     /**

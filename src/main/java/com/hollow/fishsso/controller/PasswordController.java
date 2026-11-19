@@ -34,7 +34,7 @@ public class PasswordController {
      */
     @PostMapping("/reset-code")
     public ResponseEntity<Map<String, String>> sendResetCode(@RequestBody SendResetCodeRequest request) {
-        passwordResetService.sendResetCode(request.username(), request.email());
+        passwordResetService.sendResetCode(request.preferredUsername(), request.email());
         return ResponseEntity.ok(Map.of("message", "如果用户名和邮箱匹配，验证码已发送至您的邮箱"));
     }
 
@@ -45,7 +45,7 @@ public class PasswordController {
      */
     @PostMapping("/reset")
     public ResponseEntity<Map<String, String>> resetPassword(@RequestBody ResetPasswordRequest request) {
-        passwordResetService.resetPassword(request.username(), request.newPassword(), request.code());
+        passwordResetService.resetPassword(request.preferredUsername(), request.newPassword(), request.code());
         return ResponseEntity.ok(Map.of("message", "密码重置成功"));
     }
 }

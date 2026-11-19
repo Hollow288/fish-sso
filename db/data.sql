@@ -2,7 +2,7 @@
 
 -- 插入测试用户
 -- 密码: password123 (BCrypt加密后的哈希值)
-INSERT INTO sso_user (id, username, password_hash, display_name, email) VALUES
+INSERT INTO sso_user (id, preferred_username, password_hash, name, email) VALUES
 ('user-001', 'alice', '$2a$10$Duc30Cxpx4/Trh09a0SZT.Rh1KdyeKtOSCNAmH6406WZPUPK2wYPK', '爱丽丝', 'alice@example.com'),
 ('user-002', 'bob', '$2a$10$Duc30Cxpx4/Trh09a0SZT.Rh1KdyeKtOSCNAmH6406WZPUPK2wYPK', '鲍勃', 'bob@example.com'),
 ('user-003', 'charlie', '$2a$10$Duc30Cxpx4/Trh09a0SZT.Rh1KdyeKtOSCNAmH6406WZPUPK2wYPK', '查理', 'charlie@example.com');

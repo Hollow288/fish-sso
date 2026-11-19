@@ -2,11 +2,13 @@
 
 -- 用户表
 CREATE TABLE sso_user (
-    id VARCHAR(64) PRIMARY KEY COMMENT '用户ID',
-    username VARCHAR(128) NOT NULL UNIQUE COMMENT '用户名',
+    id VARCHAR(64) PRIMARY KEY COMMENT '稳定的 OIDC sub，不随用户名改变',
+    preferred_username VARCHAR(128) NOT NULL COMMENT 'OIDC preferred_username，本系统内唯一的登录名',
     password_hash VARCHAR(255) NOT NULL COMMENT '密码哈希值',
-    display_name VARCHAR(128) COMMENT '显示名称',
-    email VARCHAR(255) COMMENT '邮箱地址'
+    name VARCHAR(128) COMMENT '显示名称',
+    email VARCHAR(255) COMMENT '邮箱地址',
+    email_verified BOOLEAN NOT NULL DEFAULT FALSE COMMENT '邮箱所有权是否已经验证',
+    CONSTRAINT uk_user_preferred_username UNIQUE (preferred_username)
 ) COMMENT='用户账号表';
 
 -- 客户端表
@@ -60,7 +62,6 @@ CREATE TABLE sso_consent_grant_scope (
 ) COMMENT='用户授权同意范围表';
 
 -- 创建索引
-CREATE INDEX idx_user_username ON sso_user(username);
 CREATE INDEX idx_client_redirect_uri ON sso_client_redirect_uri(client_id);
 CREATE INDEX idx_client_scope ON sso_client_scope(client_id);
 CREATE INDEX idx_client_user_access_user ON sso_client_user_access(user_id);

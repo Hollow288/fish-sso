@@ -8,11 +8,11 @@ import org.springframework.data.redis.core.TimeToLive;
 /**
  * 密码重置验证码模型
  */
-@RedisHash("sso:pwd_reset")
+@RedisHash("sso:pwd_reset:v2")
 public class PasswordResetCode {
 
     @Id
-    private String username;
+    private String preferredUsername;
     private String code;
     private String email;
     private int failureCount;
@@ -28,14 +28,14 @@ public class PasswordResetCode {
 
     /**
      * 构造函数
-     * @param username 用户名
+     * @param preferredUsername 用户名
      * @param code 验证码
      * @param email 邮箱
      * @param createdAt 创建时间
      * @param ttlSeconds TTL秒数
      */
-    public PasswordResetCode(String username, String code, String email, Instant createdAt, Long ttlSeconds) {
-        this.username = username;
+    public PasswordResetCode(String preferredUsername, String code, String email, Instant createdAt, Long ttlSeconds) {
+        this.preferredUsername = preferredUsername;
         this.code = code;
         this.email = email;
         this.failureCount = 0;
@@ -47,16 +47,16 @@ public class PasswordResetCode {
      * 获取用户名。
      * @return 用户名
      */
-    public String getUsername() {
-        return username;
+    public String getPreferredUsername() {
+        return preferredUsername;
     }
 
     /**
      * 设置用户名。
-     * @param username 用户名
+     * @param preferredUsername 用户名
      */
-    public void setUsername(String username) {
-        this.username = username;
+    public void setPreferredUsername(String preferredUsername) {
+        this.preferredUsername = preferredUsername;
     }
 
     /**

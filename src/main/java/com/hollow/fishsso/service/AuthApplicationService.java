@@ -54,14 +54,14 @@ public class AuthApplicationService {
 
     /**
      * 用户登录
-     * @param username 用户名
+     * @param preferredUsername 用户名
      * @param password 密码
      * @param sourceIp 来源IP地址
      * @param userAgent 用户代理字符串
      * @return 登录结果（含会话ID和过期时间）
      */
-    public LoginResult login(String username, String password, String sourceIp, String userAgent) {
-        SessionInfo session = ssoService.login(username, password, sourceIp, userAgent);
+    public LoginResult login(String preferredUsername, String password, String sourceIp, String userAgent) {
+        SessionInfo session = ssoService.login(preferredUsername, password, sourceIp, userAgent);
         return new LoginResult(session.getSessionId(), session.getExpiresAt());
     }
 

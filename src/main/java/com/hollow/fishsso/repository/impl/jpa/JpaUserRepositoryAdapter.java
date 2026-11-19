@@ -24,12 +24,12 @@ public class JpaUserRepositoryAdapter implements UserRepository {
 
     /**
      * 根据用户名查询用户信息。
-     * @param username 用户名
+     * @param preferredUsername 用户名
      * @return 匹配的用户信息
      */
     @Override
-    public Optional<UserAccount> findByUsername(String username) {
-        return repository.findByUsername(username);
+    public Optional<UserAccount> findByPreferredUsername(String preferredUsername) {
+        return repository.findByPreferredUsername(preferredUsername);
     }
 
     /**

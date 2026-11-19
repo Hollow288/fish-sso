@@ -98,23 +98,26 @@ public class SsoService {
 
     /**
      * 用户登录，校验凭证并创建会话
-     * @param username 用户名
+     * @param preferredUsername 用户名
      * @param password 密码
      * @param sourceIp 来源IP地址
      * @param userAgent 用户代理字符串
      * @return 会话信息
      * @throws SsoException 凭证无效时抛出
      */
-    public SessionInfo login(String username, String password, String sourceIp, String userAgent) {
-        loginProtectionService.assertLoginAllowed(username, sourceIp, userAgent);
+    public SessionInfo login(String preferredUsername, String password, String sourceIp, String userAgent) {
+        if (!StringUtils.hasText(preferredUsername)) {
+            throw new SsoException(HttpStatus.BAD_REQUEST, "invalid_request", "preferred_username 不能为空");
+        }
+        loginProtectionService.assertLoginAllowed(preferredUsername, sourceIp, userAgent);
 
-        UserAccount user = userRepository.findByUsername(username).orElse(null);
+        UserAccount user = userRepository.findByPreferredUsername(preferredUsername).orElse(null);
         if (user == null || !StringUtils.hasText(password) || !passwordEncoder.matches(password, user.getPasswordHash())) {
-            loginProtectionService.recordFailure(username, sourceIp, userAgent, "invalid_credentials");
+            loginProtectionService.recordFailure(preferredUsername, sourceIp, userAgent, "invalid_credentials");
             throw invalidCredentials();
         }
 
-        loginProtectionService.recordSuccess(username, sourceIp);
+        loginProtectionService.recordSuccess(preferredUsername, sourceIp);
         return sessionStore.create(user.getId(), properties.getSessionTtl());
     }
 
@@ -157,8 +160,8 @@ public class SsoService {
                 redirectUri,
                 scopes,
                 user.getId(),
-                user.getUsername(),
-                user.getDisplayName()
+                user.getPreferredUsername(),
+                user.getName()
         );
     }
 
@@ -368,7 +371,9 @@ public class SsoService {
         SessionInfo session = requireSession(sessionId);
         UserAccount user = userRepository.findById(session.getUserId())
                 .orElseThrow(() -> new SsoException(HttpStatus.UNAUTHORIZED, "login_required", "用户不存在"));
-        return new UserInfoView(user.getId(), user.getUsername(), user.getDisplayName(), user.getEmail());
+        String email = StringUtils.hasText(user.getEmail()) ? user.getEmail() : null;
+        return new UserInfoView(user.getId(), user.getPreferredUsername(), user.getName(), email,
+                email == null ? null : user.isEmailVerified());
     }
 
     /** 校验当前密码后修改密码，并使该账号的所有会话和令牌失效。 */
@@ -442,10 +447,11 @@ public class SsoService {
         }
         boolean hasProfile = scopes.contains("profile");
         boolean hasEmail = scopes.contains("email");
-        String username = hasProfile ? user.getUsername() : null;
-        String name = hasProfile ? user.getDisplayName() : null;
-        String email = hasEmail ? user.getEmail() : null;
-        return new UserInfoView(user.getId(), username, name, email);
+        String preferredUsername = hasProfile ? user.getPreferredUsername() : null;
+        String name = hasProfile ? user.getName() : null;
+        String email = hasEmail && StringUtils.hasText(user.getEmail()) ? user.getEmail() : null;
+        Boolean emailVerified = email == null ? null : user.isEmailVerified();
+        return new UserInfoView(user.getId(), preferredUsername, name, email, emailVerified);
     }
 
     /**

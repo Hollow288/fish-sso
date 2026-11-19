@@ -44,7 +44,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `username` | string | 是 | 用户名 |
+| `preferred_username` | string | 是 | 用户名 |
 | `email` | string | 是 | 用户绑定的邮箱地址 |
 
 ### 请求示例
@@ -54,7 +54,7 @@ POST /sso/password/reset-code HTTP/1.1
 Content-Type: application/json
 
 {
-  "username": "alice",
+  "preferred_username": "alice",
   "email": "alice@example.com"
 }
 ```
@@ -73,7 +73,7 @@ Content-Type: application/json
 
 #### 参数为空 — 400 Bad Request
 
-当 `username` 或 `email` 为空/空白时：
+当 `preferred_username` 或 `email` 为空/空白时：
 
 ```json
 {
@@ -115,7 +115,7 @@ Content-Type: application/json
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `username` | string | 是 | 用户名（与第一步相同） |
+| `preferred_username` | string | 是 | 用户名（与第一步相同） |
 | `new_password` | string | 是 | 新密码 |
 | `code` | string | 是 | 邮件中收到的6位数字验证码 |
 
@@ -126,7 +126,7 @@ POST /sso/password/reset HTTP/1.1
 Content-Type: application/json
 
 {
-  "username": "alice",
+  "preferred_username": "alice",
   "new_password": "myNewSecurePassword123",
   "code": "582947"
 }
@@ -249,11 +249,11 @@ interface ErrorResponse {
 
 ```javascript
 // 第一步：发送验证码
-async function sendResetCode(username, email) {
+async function sendResetCode(preferred_username, email) {
   const res = await fetch('/sso/password/reset-code', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, email })
+    body: JSON.stringify({ preferred_username, email })
   });
 
   if (res.status === 429) {
@@ -272,11 +272,11 @@ async function sendResetCode(username, email) {
 }
 
 // 第二步：重置密码
-async function resetPassword(username, newPassword, code) {
+async function resetPassword(preferred_username, newPassword, code) {
   const res = await fetch('/sso/password/reset', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, new_password: newPassword, code })
+    body: JSON.stringify({ preferred_username, new_password: newPassword, code })
   });
 
   if (!res.ok) {

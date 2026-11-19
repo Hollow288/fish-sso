@@ -106,7 +106,7 @@ public class AuthController {
         String userAgent = httpRequest.getHeader(HttpHeaders.USER_AGENT);
         String safeReturnTo = returnToValidator.validate(loginRequest.returnTo());
         LoginResult loginResult = authApplicationService.login(
-                loginRequest.username(),
+                loginRequest.preferredUsername(),
                 loginRequest.password(),
                 sourceIp,
                 userAgent
@@ -162,7 +162,7 @@ public class AuthController {
     @GetMapping("/userinfo")
     public UserInfoResponse userInfo(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
         UserInfoView user = authApplicationService.getUserInfo(authorization);
-        return new UserInfoResponse(user.sub(), user.username(), user.name(), user.email());
+        return new UserInfoResponse(user.sub(), user.preferredUsername(), user.name(), user.email(), user.emailVerified());
     }
 
     /**
@@ -203,7 +203,7 @@ public class AuthController {
     @GetMapping("/me")
     public UserInfoResponse currentUser(HttpServletRequest request) {
         UserInfoView user = authApplicationService.currentUser(requestContextResolver.resolveSessionId(request));
-        return new UserInfoResponse(user.sub(), user.username(), user.name(), user.email());
+        return new UserInfoResponse(user.sub(), user.preferredUsername(), user.name(), user.email(), user.emailVerified());
     }
 
     /** 修改当前账号密码。成功后清除所有登录会话及令牌。 */
